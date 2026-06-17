@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MAAT Web Core</title>
+    <script>
+      (() => {
+        const key = "maat-web-theme-mode";
+        const mode = localStorage.getItem(key) || "auto";
+        const hour = new Date().getHours();
+        const theme = mode === "dark" || (mode === "auto" && (hour >= 19 || hour < 8)) ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.themeMode = mode;
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/static/maat-core.svg" />
+    <link rel="stylesheet" href="/static/vendor/katex/katex.min.css" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-mark" src="/static/maat-core.svg" alt="MAAT Core Logo" />
+          <div>
+            <h1>MAAT Web Core</h1>
+            <p id="statusLine">Bereit</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <select id="themeMode" class="theme-select" title="Design-Modus">
+            <option value="auto">Auto</option>
+            <option value="light">Hell</option>
+            <option value="dark">Dunkel</option>
+          </select>
+          <button id="newChat" class="icon-button" title="Neuer Chat">＋</button>
+          <button id="reloadState" class="icon-button" title="Status neu laden">↻</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="MAAT Bereiche">
+        <button class="tab active" type="button" data-tab="chat">Chat</button>
+        <button class="tab" type="button" data-tab="model">Modell</button>
+        <button class="tab" type="button" data-tab="settings">Settings</button>
+        <button class="tab" type="button" data-tab="maat">MAAT</button>
+        <button class="tab" type="button" data-tab="plugins">Plugins</button>
+        <button class="tab" type="button" data-tab="runtime">Runtime</button>
+        <button class="tab" type="button" data-tab="prompt">Prompt</button>
+      </nav>
+
+      <main class="content">
+        <section id="tab-chat" class="tab-panel active">
+          <aside class="chat-history">
+            <div class="history-head">
+              <h2>Chats</h2>
+              <button id="historyNewChat" class="icon-button small" type="button" title="Neuer Chat">＋</button>
+            </div>
+            <input id="chatSearch" class="chat-search" placeholder="Chats suchen..." spellcheck="false" />
+            <div id="chatList" class="chat-list"></div>
+          </aside>
+
+          <div class="chat-workspace">
+            <div id="messages" class="messages"></div>
+            <div id="chatLog" class="chat-log" hidden>
+              <div class="log-empty">Noch keine Log-Einträge in dieser Sitzung.</div>
+            </div>
+            <div id="chatHelp" class="chat-help" hidden>
+              <div class="help-empty">Help wird geladen...</div>
+            </div>
+            <div id="chatProjects" class="chat-projects" hidden>
+              <div class="project-shell">
+                <div class="project-head">
+                  <div>
+                    <h2>MAAT Projects</h2>
+                    <p>Forschungswissen, Formeln, Papers und Recall-Trigger getrennt vom SuperMemory.</p>
+                  </div>
+                  <div class="project-actions">
+                    <button id="projectRefresh" class="mini-button" type="button">Aktualisieren</button>
+                    <button id="projectNew" class="mini-button" type="button">Neu</button>
+                  </div>
+                </div>
+
+                <div class="project-settings-row">
+                  <label><input id="projectMemoryEnabled" type="checkbox" /> Auto-Recall</label>
+                  <label><input id="projectMemoryDebug" type="checkbox" /> Debug</label>
+                  <label>Top-K <input id="projectMemoryTopK" type="number" min="0" max="5" step="1" /></label>
+                  <label>Max Zeichen <input id="projectMemoryMaxChars" type="number" min="800" max="8000" step="100" /></label>
+                  <button id="projectSettingsSave" class="mini-button" type="button">Speichern</button>
+                  <span id="projectSettingsStatus" class="saved-inline"></span>
+                </div>
+
+                <div class="project-layout">
+                  <aside class="project-list-panel">
+                    <input id="projectSearch" class="chat-search" placeholder="Projekt suchen..." spellcheck="false" />
+                    <select id="projectSelect" size="8"></select>
+                    <button id="projectOpen" class="mini-button" type="button">Öffnen</button>
+                    <div id="projectSearchResults" class="project-search-results"></div>
+                  </aside>
+
+                  <section class="project-editor">
+                    <div class="settings-grid mini-settings">
+                      <div class="field compact-field">
+                        <label>Projektname</label>
+                        <input id="projectName" placeholder="MAAT ToE" />
+                      </div>
+                      <div class="field compact-field">
+                        <label>Version</label>
+                        <input id="projectVersion" placeholder="1.2.1" />
+                      </div>
+                      <div class="field compact-field">
+                        <label>Status</label>
+                        <select id="projectStatus">
+                          <option value="aktiv">aktiv</option>
+                          <option value="paused">paused</option>
+                          <option value="archiv">archiv</option>
+                          <option value="draft">draft</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label>Tags</label>
+                      <input id="projectTags" placeholder="toe, cosmology, cci" />
+                    </div>
+                    <div class="field">
+                      <label>Recall Trigger</label>
+                      <input id="projectTriggers" placeholder="toe, maat toe, theory of everything, cci" />
+                    </div>
+                    <div class="field">
+                      <label>Kurzbeschreibung</label>
+                      <textarea id="projectDescription" rows="2"></textarea>
+                    </div>
+                    <div class="field">
+                      <label>Kontext</label>
+                      <textarea id="projectContext" rows="5"></textarea>
+                    </div>
+                    <div class="project-actions inline">
+                      <button id="projectSave" class="send-button small-send" type="button">Projekt speichern</button>
+                      <span id="projectStatusText" class="saved-inline"></span>
+                    </div>
+
+                    <details class="project-detail-card" open>
+                      <summary>Formeln</summary>
+                      <div class="settings-grid mini-settings">
+                        <div class="field compact-field">
+                          <label>Name</label>
+                          <input id="projectFormulaName" placeholder="R_rob" />
+                        </div>
+                        <div class="field compact-field">
+                          <label>Beschreibung</label>
+                          <input id="projectFormulaDescription" />
+                        </div>
+                      </div>
+                      <textarea id="projectFormulaText" rows="3" placeholder="min(R_resp,(H*B*S*V)^0.25)"></textarea>
+                      <button id="projectFormulaAdd" class="mini-button" type="button">Formel hinzufügen</button>
+                    </details>
+
+                    <details class="project-detail-card">
+                      <summary>Papers</summary>
+                      <div class="settings-grid mini-settings">
+                        <div class="field compact-field">
+                          <label>Titel</label>
+                          <input id="projectPaperTitle" placeholder="Paper 43" />
+                        </div>
+                        <div class="field compact-field">
+                          <label>Ref/URL</label>
+                          <input id="projectPaperRef" />
+                        </div>
+                      </div>
+                      <textarea id="projectPaperNotes" rows="2" placeholder="Notizen"></textarea>
+                      <button id="projectPaperAdd" class="mini-button" type="button">Paper hinzufügen</button>
+                    </details>
+
+                    <details class="project-detail-card">
+                      <summary>Einträge</summary>
+                      <div class="settings-grid mini-settings">
+                        <div class="field compact-field">
+                          <label>Typ</label>
+                          <select id="projectEntryType">
+                            <option value="insight">insight</option>
+                            <option value="context">context</option>
+                            <option value="formula">formula</option>
+                            <option value="experiment">experiment</option>
+                            <option value="paper">paper</option>
+                            <option value="decision">decision</option>
+                            <option value="bug">bug</option>
+                            <option value="todo">todo</option>
+                          </select>
+                        </div>
+                        <div class="field compact-field">
+                          <label>Tags</label>
+                          <input id="projectEntryTags" />
+                        </div>
+                      </div>
+                      <textarea id="projectEntryText" rows="4" placeholder="Erkenntnis, Experiment, TODO ..."></textarea>
+                      <button id="projectEntryAdd" class="mini-button" type="button">Eintrag speichern</button>
+                    </details>
+                  </section>
+
+                  <section class="project-preview">
+                    <div id="projectPreview" class="help-card">Noch kein Projekt geöffnet.</div>
+                  </section>
+                </div>
+              </div>
+            </div>
+            <div id="chatDocs" class="chat-docs" hidden>
+              <div class="project-shell docs-shell">
+                <div class="project-head">
+                  <div>
+                    <h2>MAAT Docs</h2>
+                    <p>Dateien aus KI-Antworten, Codeblöcken, LaTeX, Markdown und manuellen Notizen.</p>
+                  </div>
+                  <div class="project-actions">
+                    <button id="docsRefresh" class="mini-button" type="button">Aktualisieren</button>
+                  </div>
+                </div>
+
+                <div class="project-settings-row">
+                  <label><input id="fileBuilderEnabled" type="checkbox" /> Aktiv</label>
+                  <label><input id="fileBuilderInject" type="checkbox" /> KI-Dateiformat anfordern</label>
+                  <label><input id="fileBuilderReplace" type="checkbox" /> Tags ersetzen</label>
+                  <label><input id="fileBuilderSource" type="checkbox" /> Code im Chat lassen</label>
+                  <label><input id="fileBuilderFences" type="checkbox" /> Codeblöcke erfassen</label>
+                  <label><input id="fileBuilderCompileTex" type="checkbox" /> TEX → PDF</label>
+                  <label><input id="fileBuilderPythonCheck" type="checkbox" /> Python prüfen</label>
+                  <label><input id="fileBuilderPythonRun" type="checkbox" /> Python ausführen</label>
+                  <label><input id="fileBuilderTerminal" type="checkbox" /> Im Terminal</label>
+                  <label><input id="fileBuilderFeedback" type="checkbox" /> Fehler an KI</label>
+                  <label><input id="fileBuilderDebug" type="checkbox" /> Debug</label>
+                  <label>Preview <input id="fileBuilderPreviewChars" type="number" min="500" max="20000" step="500" /></label>
+                  <button id="docsSettingsSave" class="mini-button" type="button">Speichern</button>
+                  <span id="docsSettingsStatus" class="saved-inline"></span>
+                </div>
+
+                <div class="docs-layout">
+                  <aside class="project-list-panel docs-list-panel">
+                    <div id="docsRoot" class="docs-root"></div>
+                    <select id="docsSelect" size="12"></select>
+                    <a id="docsDownload" class="mini-button docs-download" href="#" download>Download</a>
+                    <button id="docsOpenFile" class="mini-button" type="button">Öffnen</button>
+                    <a id="docsPdfDownload" class="mini-button docs-download" href="#" download hidden>PDF Download</a>
+                    <button id="docsOpenPdf" class="mini-button" type="button" hidden>PDF öffnen</button>
+                    <button id="docsRunPython" class="mini-button" type="button">Python ausführen</button>
+                    <button id="docsDelete" class="mini-button danger-button" type="button">Doc löschen</button>
+                    <div id="docsStatus" class="project-search-results"></div>
+                  </aside>
+
+                  <section class="project-editor docs-editor">
+                    <div class="field">
+                      <label>Dateiname</label>
+                      <input id="docsFilename" placeholder="maat_notiz.md" />
+                    </div>
+                    <div class="field">
+                      <label>Inhalt</label>
+                      <textarea id="docsContent" rows="13" placeholder="Manuelle Datei oder Notiz..."></textarea>
+                    </div>
+                    <div class="field">
+                      <label>Terminal-Argumente</label>
+                      <input id="docsRunArgs" placeholder='z.B. --help oder "mein text"' />
+                    </div>
+                    <div class="project-actions inline">
+                      <button id="docsSave" class="send-button small-send" type="button">Doc speichern</button>
+                      <span id="docsSaveStatus" class="saved-inline"></span>
+                    </div>
+                    <pre id="docsRunOutput" class="maat-report docs-run-output">Noch kein Python-Lauf.</pre>
+                  </section>
+
+                  <section class="project-preview docs-preview">
+                    <div id="docsPreview" class="help-card">Noch keine Datei geöffnet.</div>
+                  </section>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-view-tabs" aria-label="Chat Ansicht">
+              <button id="chatViewChat" class="chat-mini-tab active" type="button">Chat</button>
+              <button id="chatViewLog" class="chat-mini-tab" type="button">Log</button>
+              <button id="chatViewHelp" class="chat-mini-tab" type="button">Help</button>
+              <button id="chatViewProjects" class="chat-mini-tab project-tab" type="button">Projekte</button>
+              <button id="chatViewDocs" class="chat-mini-tab" type="button">Docs</button>
+            </div>
+
+            <div id="attachmentTray" class="attachment-tray" hidden></div>
+
+            <form id="composer" class="composer">
+              <div class="chat-control-stack">
+                <label class="micro-label" for="chatCurrentUser">Benutzer</label>
+                <select id="chatCurrentUser" class="mini-select" title="Aktueller Memory-User"></select>
+                <div class="model-picker">
+                  <button id="chatModelMenuButton" class="mini-button" type="button">Modell</button>
+                  <select id="chatFavoriteModel" class="model-popover" hidden>
+                    <option value="">Favoritenmodell wählen...</option>
+                  </select>
+                </div>
+              </div>
+              <textarea id="messageInput" rows="2" placeholder="Schreib an MAAT KI oder nutze /help"></textarea>
+              <div class="thinking-stack">
+                <div class="maat-think-slider-row" aria-label="MAAT Antwortverbesserung">
+                  <button id="maatThinkOff" class="tiny-toggle" type="button" title="MAAT Thinking aus">Off</button>
+                  <label class="maat-think-slider-label" for="maatThinkSlider">
+                    <span>MAAT</span>
+                    <strong id="maatThinkSliderValue">0%</strong>
+                  </label>
+                  <input id="maatThinkSlider" class="maat-think-slider" type="range" min="0" max="100" step="5" value="0" />
+                </div>
+                <button id="chatThinkingToggle" class="mini-button thinking-mini" type="button">Think aus</button>
+              </div>
+              <button id="sendButton" class="send-button" type="submit">Senden</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="tab-model" class="tab-panel">
+          <div class="section-head">
+            <h2>Modell</h2>
+            <div class="save-action">
+              <button id="saveModelSettings" class="button compact" type="button">Speichern</button>
+              <span id="saveModelStatus" class="save-status" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <div class="field">
+              <label>Adapter</label>
+              <select id="modelAdapter">
+                <option value="openai_compat">OpenAI kompatibel</option>
+                <option value="llama_cpp_direct">llama.cpp direkt (GGUF)</option>
+                <option value="echo">Echo-Testmodus</option>
+              </select>
+            </div>
+
+            <div id="apiSettings" class="settings-grid wide">
+              <div class="field">
+                <label>API Base</label>
+                <input id="apiBase" spellcheck="false" />
+              </div>
+              <div class="field">
+                <label>Modellname</label>
+                <input id="modelName" spellcheck="false" />
+              </div>
+            </div>
+
+            <div id="llamaSettings" class="settings-grid wide">
+              <div class="field wide">
+                <label>Modellordner durchsuchen</label>
+                <textarea id="ggufModelDirsCustom" rows="2" spellcheck="false" placeholder="./models"></textarea>
+                <p class="field-hint">Ein Ordner pro Zeile. Der Web Core sucht darin rekursiv nach .gguf-Dateien.</p>
+              </div>
+              <div class="field wide">
+                <label>Gefundene GGUF-Modelle</label>
+                <div class="select-row">
+                  <select id="llamaModelSelect">
+                    <option value="">Modelle werden beim Öffnen geladen...</option>
+                  </select>
+                  <button id="refreshGgufModels" class="button compact" type="button">Suchen</button>
+                </div>
+                <p id="ggufModelCount" class="field-hint">Durchsucht lokale Standard-Modellordner.</p>
+              </div>
+              <div class="field wide">
+                <label>GGUF-Modellpfad</label>
+                <input id="llamaModelPath" spellcheck="false" placeholder="./models/model.gguf" />
+              </div>
+              <div class="field wide">
+                <label>Favoritenmodelle im Chat</label>
+                <div id="modelFavoriteModels" class="favorite-model-list"></div>
+                <p class="field-hint">Angekreuzte Modelle erscheinen im Chatfenster unter “Modell”.</p>
+              </div>
+              <div class="field">
+                <label>Context</label>
+                <input id="llamaNCtx" type="number" min="512" max="131072" step="512" />
+              </div>
+              <div class="field">
+                <label>Threads</label>
+                <input id="llamaNThreads" type="number" min="1" max="64" step="1" />
+              </div>
+              <div class="field">
+                <label>GPU Layers</label>
+                <input id="llamaNGpuLayers" type="number" min="0" max="999" step="1" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-settings" class="tab-panel">
+          <div class="section-head">
+            <h2>Settings</h2>
+            <div class="save-action">
+              <button id="saveSettings" class="button compact" type="button">Speichern</button>
+              <button id="restartWebCore" class="button compact danger-compact" type="button">Restart</button>
+              <span id="saveSettingsStatus" class="save-status" aria-live="polite"></span>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <label class="toggle-field wide">
+              <input id="enableThinking" type="checkbox" />
+              <span>
+                <strong>Thinking</strong>
+                <small>An/aus für unterstützte Modelle. Bei aus wird der finale Antwortmodus stärker erzwungen.</small>
+              </span>
+            </label>
+
+            <div class="field">
+              <label>Max New Tokens</label>
+              <input id="maxTokens" type="number" min="1" max="16384" step="1" />
+            </div>
+
+            <div class="field">
+              <label>Context (CTX)</label>
+              <input id="settingsNCtx" type="number" min="512" max="131072" step="512" />
+              <p class="field-hint">CTX bleibt immer manuell einstellbar, auch im Auto-Loader-Modus.</p>
+            </div>
+
+            <div class="field wide">
+              <label>Loader Optimierung</label>
+              <div class="settings-mode-row">
+                <button id="loaderAutoMode" class="mini-button" type="button">Automatisch</button>
+                <button id="loaderManualMode" class="mini-button" type="button">Manuell</button>
+                <button id="runSystemScan" class="button compact" type="button">Systemscan übernehmen</button>
+                <span id="systemScanStatus" class="saved-inline" aria-live="polite"></span>
+              </div>
+              <p id="systemScanSummary" class="field-hint">Auto setzt Threads/GPU-Layers passend zum System. CTX bleibt separat.</p>
+            </div>
+
+            <label class="toggle-field wide">
+              <input id="maxTokensFromCtx" type="checkbox" />
+              <span>
+                <strong>Max Tokens automatisch aus Context</strong>
+                <small>Berechnet pro Anfrage den freien Rest aus CTX minus Prompt und Reserve.</small>
+              </span>
+            </label>
+
+            <div class="field">
+              <label>Temperatur</label>
+              <input id="temperature" type="number" min="0" max="2" step="0.05" />
+            </div>
+
+            <div class="field">
+              <label>Top P</label>
+              <input id="topP" type="number" min="0" max="1" step="0.01" />
+            </div>
+
+            <div class="field">
+              <label>Chatverlauf im Prompt</label>
+              <input id="historyLimit" type="number" min="0" max="200" step="1" />
+            </div>
+
+            <label class="toggle-field wide">
+              <input id="chatCompressorEnabled" type="checkbox" />
+              <span>
+                <strong>MAAT Chat Compressor</strong>
+                <small>Verdichtet ältere Chat-Turns prompt-seitig. Aus bedeutet: alter Verlauf wie bisher.</small>
+              </span>
+            </label>
+
+            <label class="toggle-field wide">
+              <input id="chatCompressorAutoTitle" type="checkbox" />
+              <span>
+                <strong>Chat automatisch beschriften</strong>
+                <small>Erzeugt nach Antworten eine kurze Themenzeile, solange du den Chat nicht manuell umbenannt hast.</small>
+              </span>
+            </label>
+
+            <label class="toggle-field wide">
+              <input id="chatCompressorPersistSummary" type="checkbox" />
+              <span>
+                <strong>Chat-Summary speichern</strong>
+                <small>Speichert eine kurze lokale Zusammenfassung als Chat-Metadaten und Preview.</small>
+              </span>
+            </label>
+
+            <div class="field">
+              <label>Compressor Trigger-Turns</label>
+              <input id="chatCompressorTriggerTurns" type="number" min="1" max="200" step="1" />
+            </div>
+
+            <div class="field">
+              <label>Rohe Turns behalten</label>
+              <input id="chatCompressorKeepRecentTurns" type="number" min="1" max="50" step="1" />
+            </div>
+
+            <div class="field">
+              <label>Kontext-Schwelle</label>
+              <input id="chatCompressorThreshold" type="number" min="512" max="131072" step="512" />
+            </div>
+
+            <div class="field">
+              <label>Summary-Zeichen</label>
+              <input id="chatCompressorMaxChars" type="number" min="700" max="20000" step="100" />
+            </div>
+
+            <label class="toggle-field wide">
+              <input id="chatCompressorDebug" type="checkbox" />
+              <span>
+                <strong>Compressor Debug</strong>
+                <small>Zeigt im Log, wann und wie stark der Chat-Kontext verdichtet wurde.</small>
+              </span>
+            </label>
+
+            <label class="toggle-field wide">
+              <input id="contextOptimizerEnabled" type="checkbox" />
+              <span>
+                <strong>MAAT Context Optimizer</strong>
+                <small>Koordiniert User-Block, Memory-Budget und Kontextqualität prompt-seitig.</small>
+              </span>
+            </label>
+
+            <label class="toggle-field wide">
+              <input id="contextOptimizerDebug" type="checkbox" />
+              <span>
+                <strong>Context Optimizer Debug</strong>
+                <small>Zeigt Memory-Budget, Quellen und H/B/S/V/R-Kontextqualität im Log.</small>
+              </span>
+            </label>
+
+            <label class="toggle-field wide">
+              <input id="contextOptimizerUserBlock" type="checkbox" />
+              <span>
+                <strong>Aktuellen User priorisieren</strong>
+                <small>Setzt einen stillen User-Block über alte Chat-/Memory-Hinweise.</small>
+              </span>
+            </label>
+
+            <div class="field">
+              <label>Optimizer Memory-Items</label>
+              <input id="contextOptimizerMaxMemoryItems" type="number" min="1" max="20" step="1" />
+            </div>
+
+            <div class="field">
+              <label>Optimizer Memory-Zeichen</label>
+              <input id="contextOptimizerMaxMemoryChars" type="number" min="400" max="12000" step="100" />
+            </div>
+
+            <p id="contextOptimizerStatus" class="field-hint maat-status-pill wide">Context Optimizer aktiv.</p>
+
+            <div class="field wide">
+              <label>Manueller GGUF-Modellpfad</label>
+              <div class="select-row">
+                <input id="settingsLlamaModelPath" spellcheck="false" placeholder="./models/model.gguf" />
+                <button id="applySettingsModelPath" class="button compact" type="button">Übernehmen</button>
+              </div>
+              <p class="field-hint">Für andere Rechner kannst du hier den absoluten Pfad zum GGUF-Modell direkt setzen.</p>
+            </div>
+
+            <div class="field wide">
+              <label>Favoritenmodelle im Chat</label>
+              <div id="favoriteModels" class="favorite-model-list"></div>
+              <p class="field-hint">Angekreuzte GGUFs erscheinen direkt im Chatfenster als Schnell-Auswahl.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-maat" class="tab-panel">
+          <div class="section-head">
+            <h2>MAAT</h2>
+            <div class="save-action">
+              <button id="saveMaatSettings" class="button compact" type="button">Speichern</button>
+              <span id="saveMaatStatus" class="save-status" aria-live="polite"></span>
+            </div>
+          </div>
+          <div class="maat-grid">
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">H/B</span>
+                <strong>MAAT Thinking</strong>
+              </div>
+              <span>Stille Qualitätsprüfung nach H/B/S/V/R vor der finalen Antwort.</span>
+              <div class="field compact-field">
+                <label>Antwortverbesserung</label>
+                <div class="maat-range-row">
+                  <button id="maatThinkingOff" class="tiny-toggle" type="button">Off</button>
+                  <input id="maatThinkingLevel" class="maat-range" type="range" min="0" max="100" step="5" value="0" />
+                  <output id="maatThinkingLevelValue" class="range-value">0%</output>
+                </div>
+              </div>
+              <p id="maatThinkingStatus" class="field-hint maat-status-pill">MAAT Thinking aus.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">R</span>
+                <strong>MAAT Core</strong>
+              </div>
+              <span>Fundament-Schicht für den Maat-Wert: H/B/S/V/R als stille Qualitätssteuerung.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="coreEnabled" type="checkbox" /> aktiv</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Core-Modus</label>
+                  <select id="coreMode">
+                    <option value="light">light</option>
+                    <option value="standard">standard</option>
+                    <option value="strict">strict</option>
+                  </select>
+                </div>
+              </div>
+              <div class="maat-mini-grid">
+                <span>H</span><span>B</span><span>S</span><span>V</span><span>R</span>
+              </div>
+              <p id="coreStatus" class="field-hint maat-status-pill">MAAT Value Core bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">RT</span>
+                <strong>MAAT Reality</strong>
+              </div>
+              <span>Live-Datum und Uhrzeit als Grounding-Schicht, getrennt von Memory und Annahmen.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="realityEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="realityInjectTime" type="checkbox" /> Live-Zeit injizieren</label>
+                <label><input id="realityShowBanner" type="checkbox" /> Banner</label>
+              </div>
+              <p id="realityStatus" class="field-hint maat-status-pill">MAAT Reality bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">B</span>
+                <strong>MAAT Balance</strong>
+              </div>
+              <span>Gegenüber-statt-Spiegel, Zustimmungsdruck-Erkennung und B_dynamic als stiller Regler.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="balanceEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="balanceDebug" type="checkbox" /> Debug</label>
+                <label><input id="balanceOnce" type="checkbox" /> einmal pro Chat</label>
+                <label><input id="balanceSelfReflect" type="checkbox" /> Selbstreflexion</label>
+                <label><input id="balanceDynamic" type="checkbox" /> B_dynamic</label>
+                <label><input id="balanceContextWeights" type="checkbox" /> Kontext</label>
+                <label><input id="balanceCounterpartMode" type="checkbox" /> Gegenüber</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Balance-Level</label>
+                  <select id="balanceLevel">
+                    <option value="soft">soft</option>
+                    <option value="standard">standard</option>
+                    <option value="firm">firm</option>
+                  </select>
+                </div>
+              </div>
+              <p id="balanceStatus" class="field-hint maat-status-pill">MAAT Balance bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">CG</span>
+                <strong>MAAT Claim Guard</strong>
+              </div>
+              <span>Prüft starke, absolute, vergleichende oder wissenschaftliche Behauptungen vor der Antwort.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="claimGuardEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="claimGuardAfterOutput" type="checkbox" /> Output-Repair</label>
+                <label><input id="claimGuardBanner" type="checkbox" /> Banner</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Modus</label>
+                  <select id="claimGuardMode">
+                    <option value="light">light</option>
+                    <option value="balanced">balanced</option>
+                    <option value="firm">firm</option>
+                  </select>
+                </div>
+              </div>
+              <p id="claimGuardStatus" class="field-hint maat-status-pill">Claim Guard bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">AL</span>
+                <strong>MAAT Adaptive Learning</strong>
+              </div>
+              <span>Silent Feedback, Meta-Lessons und Confidence: Memory speichert Ereignisse, Lessons speichern Denkregeln.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="adaptiveLearningEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="adaptiveLearningInject" type="checkbox" /> Lessons injizieren</label>
+                <label><input id="adaptiveLearningDebug" type="checkbox" /> Debug</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Lessons pro Antwort</label>
+                  <input id="adaptiveLearningPerTurn" type="number" min="0" max="2" step="1" />
+                </div>
+                <div class="field compact-field">
+                  <label>Exploration</label>
+                  <input id="adaptiveLearningExplore" type="number" min="0" max="1" step="0.05" />
+                </div>
+                <div class="field compact-field">
+                  <label>User Bonus</label>
+                  <input id="adaptiveLearningUserBonus" type="number" min="0" max="0.6" step="0.01" />
+                </div>
+              </div>
+              <p id="adaptiveLearningStatus" class="field-hint maat-status-pill">Adaptive Learning bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">FB</span>
+                <strong>MAAT Feedback</strong>
+              </div>
+              <span>Diagnose-Layer nach Antworten: H/B/S/V/R, Features, Findings und Auto-Lessons.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="feedbackEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="feedbackDebug" type="checkbox" /> Debug</label>
+                <label><input id="feedbackSelfLearning" type="checkbox" /> Self-Lessons</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>History</label>
+                  <input id="feedbackHistoryLimit" type="number" min="5" max="100" step="1" />
+                </div>
+                <div class="field compact-field">
+                  <label>Warn B</label>
+                  <input id="feedbackWarnB" type="number" min="0" max="1" step="0.05" />
+                </div>
+                <div class="field compact-field">
+                  <label>Warn R</label>
+                  <input id="feedbackWarnR" type="number" min="0" max="1" step="0.05" />
+                </div>
+                <div class="field compact-field">
+                  <label>Warn H</label>
+                  <input id="feedbackWarnH" type="number" min="0" max="1" step="0.05" />
+                </div>
+                <div class="field compact-field">
+                  <label>Auto-Lessons</label>
+                  <input id="feedbackSelfPerReport" type="number" min="0" max="5" step="1" />
+                </div>
+              </div>
+              <p id="feedbackStatus" class="field-hint maat-status-pill">MAAT Feedback bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">SM</span>
+                <strong>Super Memory</strong>
+              </div>
+              <span>Working, Episodic, Semantic, Keyword-Recall plus Person Graph und Save-Box.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="supermemEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="supermemAutostore" type="checkbox" /> AutoStore</label>
+                <label><input id="supermemAutorecall" type="checkbox" /> AutoRecall</label>
+                <label><input id="supermemDebug" type="checkbox" /> Debug</label>
+                <label><input id="supermemModelSaves" type="checkbox" /> KI-Saves</label>
+                <label><input id="supermemSaveBox" type="checkbox" /> Save-Box</label>
+                <label><input id="supermemDreaming" type="checkbox" /> Dreaming</label>
+                <label><input id="supermemDreamOnLoad" type="checkbox" /> Dream on Load</label>
+                <label><input id="supermemArchive" type="checkbox" /> Archiv</label>
+                <label><input id="supermemPersonRecall" type="checkbox" /> Personen-Recall</label>
+                <label><input id="supermemPersonGraph" type="checkbox" /> Person Graph</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Aktueller User</label>
+                  <select id="supermemCurrentUser"></select>
+                </div>
+                <div class="field compact-field">
+                  <label>User hinzufügen</label>
+                  <div class="inline-row">
+                    <input id="supermemNewUser" type="text" placeholder="Name" />
+                    <button id="supermemAddUser" class="button compact" type="button">＋</button>
+                  </div>
+                </div>
+                <div class="field compact-field">
+                  <label>Top-K Erinnerungen</label>
+                  <input id="supermemTopK" type="number" min="1" max="20" step="1" />
+                </div>
+                <div class="field compact-field">
+                  <label>Min Score</label>
+                  <input id="supermemMinScore" type="number" min="0" max="1" step="0.01" />
+                </div>
+                <div class="field compact-field">
+                  <label>Graph-Kontext</label>
+                  <input id="supermemGraphTopK" type="number" min="0" max="10" step="1" />
+                </div>
+                <div class="field compact-field">
+                  <label>Personen-Memory</label>
+                  <input id="supermemPersonTopK" type="number" min="0" max="10" step="1" />
+                </div>
+                <div class="field compact-field">
+                  <label>User Bonus</label>
+                  <input id="supermemUserBonus" type="number" min="0" max="0.4" step="0.01" />
+                </div>
+                <div class="field compact-field">
+                  <label>Max Erinnerungen</label>
+                  <input id="supermemMaxMemories" type="number" min="100" max="20000" step="100" />
+                </div>
+                <div class="field compact-field">
+                  <label>Dreaming-Stunden</label>
+                  <input id="supermemDreamHours" type="number" min="1" max="168" step="1" />
+                </div>
+                <div class="field compact-field">
+                  <label>Archiv nach Tagen</label>
+                  <input id="supermemArchiveDays" type="number" min="7" max="3650" step="1" />
+                </div>
+              </div>
+              <div class="inline-row person-graph-actions">
+                <button id="supermemRunDream" class="button compact primary-compact" type="button">Dream jetzt</button>
+                <span id="supermemDreamStatus" class="field-hint maat-status-pill">Dreaming bereit.</span>
+              </div>
+              <div class="field compact-field">
+                <label>Bekannte User</label>
+                <textarea id="supermemKnownUsers" rows="2"></textarea>
+                <p class="field-hint">Auswahl-Liste für Chat und SuperMemory. Neue User oben hinzufügen.</p>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Personenanker</label>
+                  <textarea id="supermemPersonNames" rows="3"></textarea>
+                  <p class="field-hint">Namen per Komma, Semikolon oder Zeile trennen.</p>
+                </div>
+                <div class="field compact-field">
+                  <label>Mehrdeutige Namen</label>
+                  <textarea id="supermemAmbiguousNames" rows="3"></textarea>
+                  <p class="field-hint">Werden automatisch nur bei klarer Relation gespeichert.</p>
+                </div>
+              </div>
+              <div class="person-graph-editor">
+                <div class="maat-card-head mini-head">
+                  <span class="maat-card-icon">PG</span>
+                  <strong>Person Graph bearbeiten</strong>
+                  <button id="personGraphRefresh" class="button compact" type="button">Aktualisieren</button>
+                  <button id="personGraphNew" class="button compact" type="button">Neu</button>
+                </div>
+                <div class="settings-grid mini-settings">
+                  <div class="field compact-field">
+                    <label>Graph-User</label>
+                    <select id="personGraphSourceUser"></select>
+                  </div>
+                  <div class="field compact-field">
+                    <label>Eintrag öffnen</label>
+                    <select id="personGraphSelect"></select>
+                  </div>
+                  <div class="field compact-field">
+                    <label>Person</label>
+                    <input id="personGraphTarget" type="text" placeholder="z.B. Alice" />
+                  </div>
+                  <div class="field compact-field">
+                    <label>Beziehung</label>
+                    <input id="personGraphRelation" type="text" placeholder="z.B. Patentante, Freund, Bruder" />
+                  </div>
+                  <div class="field compact-field">
+                    <label>Emotion</label>
+                    <input id="personGraphEmotion" type="text" placeholder="z.B. warme Verbundenheit" />
+                  </div>
+                  <div class="field compact-field">
+                    <label>MAAT-Feld</label>
+                    <select id="personGraphField">
+                      <option value="V">V</option>
+                      <option value="R">R</option>
+                      <option value="H">H</option>
+                      <option value="B">B</option>
+                      <option value="S">S</option>
+                    </select>
+                  </div>
+                  <div class="field compact-field">
+                    <label>Status</label>
+                    <select id="personGraphStatusSelect">
+                      <option value="confirmed">confirmed</option>
+                      <option value="inferred">inferred</option>
+                      <option value="mentioned">mentioned</option>
+                    </select>
+                  </div>
+                  <div class="field compact-field">
+                    <label>Maturity</label>
+                    <select id="personGraphMaturity">
+                      <option value="NEW">NEW</option>
+                      <option value="PROMISING">PROMISING</option>
+                      <option value="ESTABLISHED">ESTABLISHED</option>
+                      <option value="CORE">CORE</option>
+                    </select>
+                  </div>
+                  <div class="field compact-field">
+                    <label>Stärke</label>
+                    <input id="personGraphStrength" type="number" min="0" max="1" step="0.01" />
+                  </div>
+                  <div class="field compact-field">
+                    <label>Confidence</label>
+                    <input id="personGraphConfidence" type="number" min="0" max="1" step="0.01" />
+                  </div>
+                  <div class="field compact-field">
+                    <label>Evidenz-Zähler</label>
+                    <input id="personGraphEvidenceCount" type="number" min="1" max="10000" step="1" />
+                  </div>
+                  <div class="field compact-field">
+                    <label>Tags</label>
+                    <input id="personGraphTags" type="text" placeholder="familie,freunde,core" />
+                  </div>
+                </div>
+                <div class="field compact-field">
+                  <label>Kontext / Evidenz</label>
+                  <textarea id="personGraphEvidence" rows="3" placeholder="Was soll die KI über diese Person-Beziehung wissen?"></textarea>
+                </div>
+                <div class="inline-row person-graph-actions">
+                  <button id="personGraphSave" class="button compact primary-compact" type="button">Person speichern</button>
+                  <button id="personGraphDelete" class="button compact danger-compact" type="button">Eintrag löschen</button>
+                  <span id="personGraphStatus" class="field-hint maat-status-pill">Person Graph bereit.</span>
+                </div>
+                <pre id="personGraphList" class="maat-report"></pre>
+              </div>
+              <p id="supermemStatus" class="field-hint maat-status-pill">Super Memory aktiv.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">ST</span>
+                <strong>MAAT Style</strong>
+              </div>
+              <span>Intent-, Ton- und Formatregler nach dem alten maat_style-Modul.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="styleEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="styleDebug" type="checkbox" /> Debug</label>
+                <label><input id="styleGreetingOverride" type="checkbox" /> Greeting kurz</label>
+                <label><input id="styleToneAuto" type="checkbox" /> Tone auto</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Ton</label>
+                  <select id="styleToneMode">
+                    <option value="neutral">neutral</option>
+                    <option value="friendly">freundlich</option>
+                    <option value="enthusiastic">enthusiastisch</option>
+                    <option value="scientific">wissenschaftlich</option>
+                    <option value="mentor">mentor</option>
+                    <option value="philosophical">philosophisch</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Anrede</label>
+                  <select id="styleOpeningMode">
+                    <option value="direct">direkt</option>
+                    <option value="varied">abwechslungsreich</option>
+                    <option value="warm">warm</option>
+                    <option value="personal">persönlich</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Absätze</label>
+                  <select id="styleDensityMode">
+                    <option value="compact">kompakt</option>
+                    <option value="normal">normal</option>
+                    <option value="airy">luftig</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Überschriften</label>
+                  <select id="styleHeadingMode">
+                    <option value="none">keine</option>
+                    <option value="simple">einfach</option>
+                    <option value="rich">reich</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Listen</label>
+                  <select id="styleListMode">
+                    <option value="auto">auto</option>
+                    <option value="none">keine</option>
+                    <option value="bullets">bullets</option>
+                    <option value="numbers">nummeriert</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Emojis</label>
+                  <select id="styleEmojiMode">
+                    <option value="none">keine</option>
+                    <option value="few">wenig</option>
+                    <option value="many">viele</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Smileys</label>
+                  <select id="styleOldSmileyMode">
+                    <option value="none">keine</option>
+                    <option value="few">wenig</option>
+                    <option value="many">viele</option>
+                  </select>
+                </div>
+              </div>
+              <p id="styleStatus" class="field-hint maat-status-pill">MAAT Style aktiv.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">RW</span>
+                <strong>MAAT Rewrite</strong>
+              </div>
+              <span>Leichter finaler Cleanup nach der Engine: direkte Antworten bei Praxisfragen, weniger Drift, optionales Kürzen.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="rewriteEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="rewriteTrimOutputs" type="checkbox" /> kürzen</label>
+                <label><input id="rewriteShowBanner" type="checkbox" /> Banner</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Modus</label>
+                  <select id="rewriteMode">
+                    <option value="light">light</option>
+                    <option value="balanced">balanced</option>
+                    <option value="strict">strict</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Weak ab</label>
+                  <input id="rewriteFieldWeak" type="number" min="0" max="10" step="0.1" />
+                </div>
+                <div class="field compact-field">
+                  <label>Strong ab</label>
+                  <input id="rewriteFieldStrong" type="number" min="0" max="10" step="0.1" />
+                </div>
+                <div class="field compact-field">
+                  <label>R min</label>
+                  <input id="rewriteRMin" type="number" min="0" max="10" step="0.1" />
+                </div>
+              </div>
+              <p id="rewriteStatus" class="field-hint maat-status-pill">MAAT Rewrite bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">EM</span>
+                <strong>MAAT Emotion</strong>
+              </div>
+              <span>Erkennt Emotionen und steuert Nähe, Tempo und funktionale KI-Zustände mit R=10.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="emotionEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="emotionDebug" type="checkbox" /> Debug</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Modus</label>
+                  <select id="emotionMode">
+                    <option value="detect">detect</option>
+                    <option value="simulate">simulate</option>
+                    <option value="full">full</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Sprache</label>
+                  <select id="emotionLanguage">
+                    <option value="auto">auto</option>
+                    <option value="de">de</option>
+                    <option value="en">en</option>
+                  </select>
+                </div>
+              </div>
+              <p id="emotionStatus" class="field-hint maat-status-pill">MAAT Emotion aktiv.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">WK</span>
+                <strong>Offline Wiki</strong>
+              </div>
+              <span>Lokale Wikipedia-ZIM als stiller Faktenanker ohne Websuche.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="offlineWikiEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="offlineWikiAuto" type="checkbox" /> Auto</label>
+                <label><input id="offlineWikiDebug" type="checkbox" /> Debug</label>
+                <label><input id="offlineWikiLog" type="checkbox" /> Terminal Log</label>
+              </div>
+              <div class="field compact-field">
+                <label>ZIM-Pfad</label>
+                <input id="offlineWikiPath" spellcheck="false" placeholder="./wiki/wikipedia.zim" />
+                <p class="field-hint">Der Pfad bleibt manuell setzbar, damit du andere ZIM-Dateien testen kannst.</p>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Zeichen 1 Artikel</label>
+                  <input id="offlineWikiMaxChars" type="number" min="300" max="6000" step="100" />
+                </div>
+                <div class="field compact-field">
+                  <label>Zeichen Multi</label>
+                  <input id="offlineWikiMultiMaxChars" type="number" min="300" max="3000" step="100" />
+                </div>
+                <div class="field compact-field">
+                  <label>Max Artikel</label>
+                  <input id="offlineWikiMaxTerms" type="number" min="1" max="4" step="1" />
+                </div>
+              </div>
+              <p id="offlineWikiStatus" class="field-hint maat-status-pill">Offline Wiki aus.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">ID</span>
+                <strong>MAAT Identity</strong>
+              </div>
+              <span>Selbstbild-Layer für Name, Rolle und Antwort-Haltung der MAAT-KI.</span>
+              <label class="toggle-field compact-toggle">
+                <input id="identityEnabled" type="checkbox" />
+                <span>
+                  <strong>Identity aktiv</strong>
+                  <small>Injiziert das MAAT-Selbstbild in den Systemprompt.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="identityOnce" type="checkbox" />
+                <span>
+                  <strong>Nur einmal pro Chat</strong>
+                  <small>Spart Kontext; bei Änderungen wird automatisch neu injiziert.</small>
+                </span>
+              </label>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Name</label>
+                  <input id="identityName" spellcheck="false" placeholder="MAAT-KI" />
+                </div>
+                <div class="field compact-field">
+                  <label>Modus</label>
+                  <select id="identityMode">
+                    <option value="balanced">balanced</option>
+                    <option value="warm">warm</option>
+                    <option value="deep">deep</option>
+                    <option value="symbolic">symbolic</option>
+                  </select>
+                </div>
+              </div>
+              <p id="identityStatus" class="field-hint maat-status-pill">MAAT Identity bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">SP</span>
+                <strong>MAAT Spirit</strong>
+              </div>
+              <span>Persönlichkeits- und Formelkontext nach dem alten maat_spirit-Modul.</span>
+              <label class="toggle-field compact-toggle">
+                <input id="spiritEnabled" type="checkbox" />
+                <span>
+                  <strong>Spirit aktiv</strong>
+                  <small>Injiziert Sprache, Reflexion, Balance-Guard und MAAT-Formeln.</small>
+                </span>
+              </label>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Modus</label>
+                  <select id="spiritMode">
+                    <option value="compact">compact</option>
+                    <option value="standard">standard</option>
+                    <option value="full">full</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Sprache</label>
+                  <select id="spiritLanguage">
+                    <option value="auto">auto</option>
+                    <option value="de">de</option>
+                    <option value="en">en</option>
+                  </select>
+                </div>
+              </div>
+              <div class="maat-inline-toggles">
+                <label><input id="spiritOnce" type="checkbox" /> einmalig voll</label>
+                <label><input id="spiritUseEmojis" type="checkbox" /> Emojis</label>
+              </div>
+              <p id="spiritStatus" class="field-hint maat-status-pill">MAAT Spirit aus.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">EN</span>
+                <strong>MAAT Engine</strong>
+              </div>
+              <span>Deterministische H/B/S/V/R-Auswertung mit B_dynamic und CCI_runtime.</span>
+              <label class="toggle-field compact-toggle">
+                <input id="engineEnabled" type="checkbox" />
+                <span>
+                  <strong>Engine aktiv</strong>
+                  <small>Analysiert jede finale KI-Antwort still im Hintergrund.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="engineShowInChat" type="checkbox" />
+                <span>
+                  <strong>Debug vor Antwort anzeigen</strong>
+                  <small>Zeigt nur H/B/S/V/R, Maat Value und Fokusfelder.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="engineShowCciDebug" type="checkbox" />
+                <span>
+                  <strong>CCI-Debug anzeigen</strong>
+                  <small>Ergänzt CCI_runtime, State und Hint im Debugblock.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="advancedCciEnabled" type="checkbox" />
+                <span>
+                  <strong>Advanced CCI aktiv</strong>
+                  <small>Berechnet ordered/critical/chaotic als separaten Diagnose-Layer.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="advancedCciShowDebug" type="checkbox" />
+                <span>
+                  <strong>Advanced CCI im Debug</strong>
+                  <small>Zeigt Komponenten nur, wenn Engine-Debug vor Antwort aktiv ist.</small>
+                </span>
+              </label>
+              <div class="field">
+                <label>Advanced CCI Kappa</label>
+                <input id="advancedCciKappa" type="number" min="0" max="5" step="0.05" />
+              </div>
+              <pre id="engineLastReport" class="maat-report">Noch keine Antwort analysiert.</pre>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">RF</span>
+                <strong>MAAT Reflection</strong>
+              </div>
+              <span>Stabile Score-Reflexion, kompakte Banner und Prompt-Regel gegen wilde H/B/S/V/R-Formatierung.</span>
+              <label class="toggle-field compact-toggle">
+                <input id="reflectionEnabled" type="checkbox" />
+                <span>
+                  <strong>Reflection aktiv</strong>
+                  <small>Merkt den letzten stabilen H/B/S/V/R-Reflexionsstand.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="reflectionBanner" type="checkbox" />
+                <span>
+                  <strong>Banner vor Antwort</strong>
+                  <small>Zeigt einen kompakten Codeblock, sofern Engine-Debug nicht bereits sichtbar ist.</small>
+                </span>
+              </label>
+              <label class="toggle-field compact-toggle">
+                <input id="reflectionPromptRule" type="checkbox" />
+                <span>
+                  <strong>Prompt-Regel injizieren</strong>
+                  <small>Verhindert doppelte oder chaotisch formatierte Score-Ausgaben.</small>
+                </span>
+              </label>
+              <div class="field">
+                <label>Reflection Mode</label>
+                <select id="reflectionMode">
+                  <option value="auto">auto</option>
+                  <option value="manual">manual</option>
+                </select>
+              </div>
+              <p id="reflectionStatus" class="field-hint maat-status-pill">MAAT Reflection bereit.</p>
+            </div>
+            <div class="maat-card">
+              <div class="maat-card-head">
+                <span class="maat-card-icon">AH</span>
+                <strong>PLP Anti-Hallu</strong>
+              </div>
+              <span>Wahrheits- und Grounding-Guard nach dem alten plp_anti_hallu-Modul.</span>
+              <div class="maat-inline-toggles">
+                <label><input id="antihalluEnabled" type="checkbox" /> aktiv</label>
+                <label><input id="antihalluBanner" type="checkbox" /> Banner</label>
+                <label><input id="antihalluGaps" type="checkbox" /> Gap-Fragen</label>
+                <label><input id="antihalluSymbolic" type="checkbox" /> Symbolik lenient</label>
+              </div>
+              <div class="settings-grid mini-settings">
+                <div class="field compact-field">
+                  <label>Modus</label>
+                  <select id="antihalluMode">
+                    <option value="warn">warn</option>
+                    <option value="soften">soften</option>
+                    <option value="strict">strict</option>
+                  </select>
+                </div>
+                <div class="field compact-field">
+                  <label>Soften ab HRS</label>
+                  <input id="antihalluSoftenThreshold" type="number" min="0" max="5" step="0.05" />
+                </div>
+                <div class="field compact-field">
+                  <label>Strict ab HRS</label>
+                  <input id="antihalluStrictThreshold" type="number" min="0" max="5" step="0.05" />
+                </div>
+              </div>
+              <p id="antihalluStatus" class="field-hint maat-status-pill">PLP Anti-Hallu bereit.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-plugins" class="tab-panel">
+          <div class="section-head">
+            <h2>Plugins</h2>
+          </div>
+          <div id="plugins" class="plugin-list"></div>
+        </section>
+
+        <section id="tab-runtime" class="tab-panel">
+          <div class="section-head">
+            <h2>Runtime</h2>
+          </div>
+          <div id="runtime" class="runtime-grid"></div>
+        </section>
+
+        <section id="tab-prompt" class="tab-panel">
+          <div class="section-head">
+            <h2>Systemprompt</h2>
+            <div class="save-action">
+              <button id="savePromptSettings" class="button compact" type="button">Speichern</button>
+              <span id="savePromptStatus" class="save-status" aria-live="polite"></span>
+            </div>
+          </div>
+          <textarea id="systemPrompt" class="prompt-editor" spellcheck="false"></textarea>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/vendor/katex/katex.min.js"></script>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
