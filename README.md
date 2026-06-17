@@ -38,7 +38,7 @@ Diese Felder sind keine zwingende Philosophie für Nutzerinnen und Nutzer. Im We
 
 - **Lokaler Chat:** Weboberfläche mit Streaming, Chatliste, Copy, Vorlesen, Thinking-Fenster und Anhängen.
 - **Direkter GGUF-Loader:** Lädt Modelle über `llama-cpp-python`, inklusive Systemscan für Threads/GPU-Layers. Ausgelegt für moderne GGUF-Modelle wie Qwen 3.6 und Google Gemma 4.
-- **OpenAI-kompatibler Adapter:** Optionaler Betrieb gegen lokale `/v1/chat/completions`-APIs, z.B. llama.cpp server oder text-generation-webui mit OpenAI-API.
+- **OpenAI-kompatibler Adapter:** Optionaler Betrieb gegen lokale `/v1/chat/completions`-APIs, z.B. llama.cpp server oder andere lokale OpenAI-kompatible Backends.
 - **Super Memory:** Arbeits-, episodisches, semantisches und keyword-basiertes Gedächtnis mit User-Auswahl.
 - **Person Graph:** Strukturierte Beziehungen zwischen Usern und erwähnten Personen, inklusive Confidence und Status.
 - **Project Memory:** Projektwissen, Formeln, Paper, Trigger und Projektkontext getrennt von persönlichen Memories.
@@ -143,7 +143,7 @@ ab 32 GB    -> Gemma 4 Q4, ctx 40k
 Manueller Start:
 
 ```bash
-cd maat-web-core-public
+cd maat-web-core
 python3 run.py
 ```
 
@@ -288,18 +288,18 @@ Der Docs/File-Builder verwaltet erzeugte Dateien:
 
 ### OpenAI-kompatible API
 
-Standard:
-
-```text
-http://127.0.0.1:7860/v1
-```
-
-Der Adapter ist mit lokalen OpenAI-kompatiblen Backends nutzbar, z.B. llama.cpp server oder text-generation-webui mit aktivierter OpenAI-API.
-
-Für llama.cpp Server:
+Beispiel fuer einen lokalen OpenAI-kompatiblen Server:
 
 ```text
 http://127.0.0.1:8080/v1
+```
+
+Der Adapter ist mit lokalen OpenAI-kompatiblen Backends nutzbar, z.B. llama.cpp server oder andere lokale Tools, die `/v1/chat/completions` anbieten.
+
+Falls ein anderes lokales Backend einen anderen Port nutzt, trage dessen `/v1`-Basis-URL in den Settings ein, z.B.:
+
+```text
+http://127.0.0.1:<port>/v1
 ```
 
 ### Direkter llama.cpp GGUF Loader
