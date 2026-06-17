@@ -12,6 +12,8 @@ Projektseite: [www.maat-research.com](https://www.maat-research.com)
 
 Mitmachen und Sicherheit: [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
 
+> **Hinweis:** MAAT Web Core ist eine frühe öffentliche Version und wird aktiv weiterentwickelt. Es können noch Fehler, unvollständige Funktionen und Modell-/Plattform-Unterschiede auftreten. Bugfixes, Tests und Verbesserungen werden schrittweise ergänzt.
+
 ## Was ist MAAT Web Core?
 
 MAAT Web Core ist kein Cloud-Dienst und kein reiner Chat-Wrapper. Es ist ein lokaler Forschungs- und Arbeitskern, der ein Sprachmodell mit zusätzlichen Kontext- und Kontrollschichten verbindet.
