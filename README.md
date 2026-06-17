@@ -4,7 +4,9 @@
 
 # MAAT Web Core
 
-MAAT Web Core ist ein lokales, webbasiertes KI-Tool für GGUF-Modelle und modulare Assistenzsysteme. Es kombiniert Chat, Modellsteuerung, Langzeitgedächtnis, Offline-Wiki, Projektgedächtnis, Dokument-/Code-Erzeugung, Feedback-Learning und MAAT-Diagnose in einer gemeinsamen Weboberfläche.
+MAAT Web Core ist ein lokaler, modularer KI-Web-Core mit Fokus auf langfristiges Memory, Projektkontext, Offline-Wissen, lokale GGUF-Modelle und MAAT-basierte Selbstregulation.
+
+Es kombiniert Chat, Modellsteuerung, Langzeitgedächtnis, Offline-Wiki, Projektgedächtnis, Dokument-/Code-Erzeugung, Feedback-Learning und Antwortdiagnose in einer gemeinsamen Weboberfläche.
 
 Lizenz: GNU Affero General Public License v3.0. Siehe [LICENSE](LICENSE).
 
@@ -13,6 +15,30 @@ Projektseite: [www.maat-research.com](https://www.maat-research.com)
 Mitmachen und Sicherheit: [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
 
 > **Hinweis:** MAAT Web Core ist eine frühe öffentliche Version und wird aktiv weiterentwickelt. Es können noch Fehler, unvollständige Funktionen und Modell-/Plattform-Unterschiede auftreten. Bugfixes, Tests und Verbesserungen werden schrittweise ergänzt.
+
+## Highlights
+
+- **Local-first:** Läuft lokal mit GGUF-Modellen über `llama-cpp-python` oder optional über lokale OpenAI-kompatible APIs.
+- **Langzeitgedächtnis:** Super Memory, Person Graph, Timeline, Archiv und gewichtete Lessons.
+- **Projektwissen:** Project Memory für Forschungsprojekte, Formeln, Paper, Trigger und Kontext.
+- **Offline-Wissen:** Optionaler Kiwix/ZIM-Reader mit klar gekennzeichnetem Offline-Wiki-Kontext.
+- **MAAT-Diagnose:** H/B/S/V/R, Stability, CCI, Balance, Claim Guard, Anti-Hallu und Reflection.
+- **Werkzeugschicht:** Code/LaTeX/HTML-Dateien erzeugen, Python ausführen, LaTeX zu PDF kompilieren und Fehler an die KI zurückgeben.
+- **Transparenz:** Log-Ansicht, Debug-Blöcke, sichtbare Quellenhinweise und aufklappbares Thinking-Fenster.
+
+## Why MAAT Web Core?
+
+Viele lokale KI-Tools sind sehr stark in einem bestimmten Bereich: Modell-Laden, Chat-UI, Rollen-/Charakter-Workflows oder API-Anbindung. MAAT Web Core konzentriert sich auf einen anderen Schwerpunkt: langfristiges, nachvollziehbares Arbeiten mit einer lokalen KI.
+
+Der Fokus liegt auf:
+
+- **Kontext statt nur Chatverlauf:** Memory, Projektwissen, Offline-Wiki und Chat-Suche arbeiten als getrennte Quellen.
+- **Lernen aus Feedback:** Lessons speichern Denkregeln, nicht nur Ereignisse.
+- **Quellenbewusstsein:** Memory, Wiki und Projektkontext sollen für das Modell unterscheidbar bleiben.
+- **Arbeitsfähigkeit:** Die KI kann Dateien erzeugen, Code prüfen, Python ausführen und LaTeX/PDF-Workflows begleiten.
+- **Selbstregulation:** MAAT-Module prüfen Antworten auf Klarheit, Balance, Evidenz, Kontextbezug und Halluzinationsrisiko.
+
+Kurz gesagt: MAAT Web Core ist weniger ein reines Chat-Frontend und mehr eine lokale KI-Arbeitsumgebung für längere Projekte, Forschung, Dokumentation und iteratives Denken.
 
 ## Was ist MAAT Web Core?
 
@@ -792,6 +818,30 @@ Funktionen:
 - Fehlerfeedback für die nächste KI-Antwort injizieren
 
 Thinking-Code soll nicht als Datei gespeichert werden.
+
+### Python-Ausführung aktivieren
+
+Python-Ausführung ist aus Sicherheitsgründen standardmäßig deaktiviert. Aktivieren nur, wenn du lokal arbeitest und dem erzeugten Code vertraust.
+
+Über die UI:
+
+1. Settings öffnen.
+2. MAAT / Docs / File Builder Bereich öffnen.
+3. `Aktiv` eingeschaltet lassen.
+4. `Python ausführen` aktivieren.
+5. Optional `Im Terminal` aktivieren, wenn `.py`-Dateien in einem sichtbaren Terminalfenster laufen sollen.
+6. Speichern.
+
+Alternativ in `data/settings.json`:
+
+```json
+{
+  "file_builder_python_run_enabled": true,
+  "file_builder_python_run_in_terminal": false
+}
+```
+
+Wenn `file_builder_python_run_in_terminal` auf `true` steht, versucht MAAT Web Core ein lokales Terminal zu öffnen. Wenn es auf `false` steht, wird der Code im Python-Prozess/Environment des Web Core ausgeführt und das Ergebnis in der UI angezeigt.
 
 ## Commands
 
