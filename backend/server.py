@@ -152,6 +152,48 @@ from .system_scan import apply_auto_loader_settings, system_scan
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
+ACCESS_DENIED_HTML = """\
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zugriff verweigert · MAAT Web Core</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1110;
+      color: #eef8f4;
+    }
+    main {
+      width: min(520px, calc(100vw - 32px));
+      border: 1px solid rgba(121, 207, 181, 0.35);
+      border-radius: 14px;
+      padding: 28px;
+      background: rgba(255, 255, 255, 0.055);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    }
+    h1 { margin: 0 0 10px; font-size: 1.35rem; }
+    p { margin: 0; line-height: 1.55; color: #c9d9d4; }
+    .hint { margin-top: 14px; font-size: 0.92rem; color: #9fb6af; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Zugriff verweigert</h1>
+    <p>Das Passwort wurde falsch eingegeben oder die Anmeldung wurde abgebrochen.</p>
+    <p class="hint">Schließe diesen Tab oder lade die Seite neu, um dich erneut anzumelden.</p>
+  </main>
+</body>
+</html>
+"""
+
+
 def auth_credentials() -> tuple[str, str] | None:
     enabled = str(os.environ.get("MAAT_WEB_AUTH_ENABLED", "1")).strip().lower()
     if enabled in {"0", "false", "off", "no", "nein"}:
@@ -1605,10 +1647,13 @@ class MaatRequestHandler(BaseHTTPRequestHandler):
     server_version = "MAATWebCore/0.1"
 
     def do_GET(self) -> None:
-        if not self._check_auth():
-            return
         parsed = urlparse(self.path)
         path_only = parsed.path
+        if path_only == "/access-denied":
+            self._access_denied_page()
+            return
+        if not self._check_auth():
+            return
         if path_only == "/":
             self._serve_file(STATIC_DIR / "index.html")
             return
@@ -1753,28 +1798,49 @@ class MaatRequestHandler(BaseHTTPRequestHandler):
         try:
             decoded = base64.b64decode(raw[len(prefix) :].strip(), validate=True).decode("utf-8")
         except Exception:
-            self._auth_required()
+            self._auth_denied_redirect()
             return False
 
         user, sep, password = decoded.partition(":")
         if not sep:
-            self._auth_required()
+            self._auth_denied_redirect()
             return False
 
         if hmac.compare_digest(user, expected_user) and hmac.compare_digest(password, expected_password):
             return True
 
-        self._auth_required()
+        self._auth_denied_redirect()
         return False
 
     def _auth_required(self) -> None:
-        body = b"MAAT Web Core: Login erforderlich.\n"
+        body = ACCESS_DENIED_HTML.encode("utf-8")
         self.send_response(HTTPStatus.UNAUTHORIZED)
         self.send_header("WWW-Authenticate", 'Basic realm="MAAT Web Core", charset="UTF-8"')
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        self._send_no_store_headers()
         self.end_headers()
         self.wfile.write(body)
+
+    def _auth_denied_redirect(self) -> None:
+        self.send_response(HTTPStatus.SEE_OTHER)
+        self.send_header("Location", "/access-denied")
+        self._send_no_store_headers()
+        self.end_headers()
+
+    def _access_denied_page(self) -> None:
+        body = ACCESS_DENIED_HTML.encode("utf-8")
+        self.send_response(HTTPStatus.FORBIDDEN)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self._send_no_store_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_no_store_headers(self) -> None:
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
 
     def _serve_file(self, path: Path) -> None:
         if not path.exists() or not path.is_file():
@@ -1785,6 +1851,7 @@ class MaatRequestHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
+        self._send_no_store_headers()
         self.end_headers()
         self.wfile.write(data)
 
@@ -1800,6 +1867,7 @@ class MaatRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Content-Disposition", f'attachment; filename="{path.name}"')
         self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_no_store_headers()
         self.end_headers()
         self.wfile.write(data)
 
@@ -1820,6 +1888,7 @@ class MaatRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        self._send_no_store_headers()
         self.end_headers()
         self.wfile.write(data)
 
@@ -1840,6 +1909,8 @@ class MaatRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.send_header("X-Accel-Buffering", "no")
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
         self.end_headers()
         self.close_connection = True
 
@@ -1892,7 +1963,12 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     MaatRequestHandler.runtime = runtime
     MaatRequestHandler.auth = auth_credentials()
     server = ThreadingHTTPServer((host, port), MaatRequestHandler)
-    print(f"MAAT Web Core läuft auf http://{host}:{port}")
+    display_url = f"http://{host}:{port}"
+    if host in {"0.0.0.0", "::"}:
+        display_url = f"http://<LAN-IP>:{port}"
+    print(f"MAAT Web Core läuft auf {display_url}")
+    if host in {"0.0.0.0", "::"}:
+        print("LAN-Modus: aktiv · IP-Adresse des Rechners im lokalen Netzwerk verwenden")
     if MaatRequestHandler.auth:
         print(f"Basic Auth: aktiv · user={MaatRequestHandler.auth[0]!r}")
     else:

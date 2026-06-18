@@ -15,9 +15,6 @@ MODEL_REPO="unsloth/gemma-4-26B-A4B-it-GGUF"
 MODEL_Q2_NAME="gemma-4-26B-A4B-it-UD-Q2_K_XL.gguf"
 MODEL_Q3_NAME="gemma-4-26B-A4B-it-UD-Q3_K_XL.gguf"
 MODEL_Q4_NAME="gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf"
-MODEL_Q2_URL="https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/${MODEL_Q2_NAME}?download=true"
-MODEL_Q3_URL="https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/${MODEL_Q3_NAME}?download=true"
-MODEL_Q4_URL="https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/${MODEL_Q4_NAME}?download=true"
 
 ZIM_NAME="wikipedia_de_all_mini_2026-04.zim"
 ZIM_URL="https://download.kiwix.org/zim/wikipedia/${ZIM_NAME}"
@@ -216,6 +213,44 @@ PY
   fi
 }
 
+download_hf_model() {
+  local repo_id="$1"
+  local filename="$2"
+  local dest="$3"
+  local label="$4"
+  if [[ -f "$dest" ]]; then
+    echo "Bereits vorhanden: $dest"
+    return
+  fi
+  echo "Hugging-Face-Download: $label"
+  echo "Repo: $repo_id"
+  echo "Datei: $filename"
+  echo "Ziel: $dest"
+  python - "$repo_id" "$filename" "$dest" <<'PY'
+import shutil
+import sys
+from pathlib import Path
+
+from huggingface_hub import hf_hub_download
+
+repo_id, filename, dest = sys.argv[1], sys.argv[2], Path(sys.argv[3])
+dest.parent.mkdir(parents=True, exist_ok=True)
+
+downloaded = Path(
+    hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        local_dir=str(dest.parent),
+    )
+)
+
+if downloaded.resolve() != dest.resolve():
+    shutil.copy2(downloaded, dest)
+
+print(f"Gespeichert: {dest}")
+PY
+}
+
 write_settings() {
   local model_path="${1:-}"
   local ctx="${2:-}"
@@ -298,18 +333,15 @@ echo ""
 echo "Erkannter RAM: ${RAM_GB} GB"
 
 MODEL_NAME="$MODEL_Q2_NAME"
-MODEL_URL="$MODEL_Q2_URL"
 MODEL_CTX="20000"
 MODEL_LABEL="Gemma 4 26B A4B Q2 · ctx 20k"
 
 if (( RAM_GB >= 32 )); then
   MODEL_NAME="$MODEL_Q4_NAME"
-  MODEL_URL="$MODEL_Q4_URL"
   MODEL_CTX="40000"
   MODEL_LABEL="Gemma 4 26B A4B Q4 · ctx 40k"
 elif (( RAM_GB >= 24 )); then
   MODEL_NAME="$MODEL_Q3_NAME"
-  MODEL_URL="$MODEL_Q3_URL"
   MODEL_CTX="40000"
   MODEL_LABEL="Gemma 4 26B A4B Q3 · ctx 40k"
 fi
@@ -319,7 +351,7 @@ echo "Empfohlenes Modell: $MODEL_LABEL"
 
 DOWNLOADED_MODEL=""
 if ask_yes_no "Empfohlenes Gemma-4-GGUF herunterladen?" "n"; then
-  download_file "$MODEL_URL" "$MODEL_PATH" "$MODEL_LABEL"
+  download_hf_model "$MODEL_REPO" "$MODEL_NAME" "$MODEL_PATH" "$MODEL_LABEL"
   DOWNLOADED_MODEL="$MODEL_PATH"
 fi
 

@@ -4,13 +4,41 @@
 
 # MAAT Web Core
 
-MAAT Web Core ist ein lokales, webbasiertes KI-Tool für GGUF-Modelle und modulare Assistenzsysteme. Es kombiniert Chat, Modellsteuerung, Langzeitgedächtnis, Offline-Wiki, Projektgedächtnis, Dokument-/Code-Erzeugung, Feedback-Learning und MAAT-Diagnose in einer gemeinsamen Weboberfläche.
+MAAT Web Core ist ein lokaler, modularer KI-Web-Core mit Fokus auf langfristiges Memory, Projektkontext, Offline-Wissen, lokale GGUF-Modelle und MAAT-basierte Selbstregulation.
+
+Es kombiniert Chat, Modellsteuerung, Langzeitgedächtnis, Offline-Wiki, Projektgedächtnis, Dokument-/Code-Erzeugung, Feedback-Learning und Antwortdiagnose in einer gemeinsamen Weboberfläche.
 
 Lizenz: GNU Affero General Public License v3.0. Siehe [LICENSE](LICENSE).
 
 Projektseite: [www.maat-research.com](https://www.maat-research.com)
 
 Mitmachen und Sicherheit: [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
+
+> **Hinweis:** MAAT Web Core ist eine frühe öffentliche Version und wird aktiv weiterentwickelt. Es können noch Fehler, unvollständige Funktionen und Modell-/Plattform-Unterschiede auftreten. Bugfixes, Tests und Verbesserungen werden schrittweise ergänzt.
+
+## Highlights
+
+- **Local-first:** Läuft lokal mit GGUF-Modellen über `llama-cpp-python` oder optional über lokale OpenAI-kompatible APIs.
+- **Langzeitgedächtnis:** Super Memory, Person Graph, Timeline, Archiv und gewichtete Lessons.
+- **Projektwissen:** Project Memory für Forschungsprojekte, Formeln, Paper, Trigger und Kontext.
+- **Offline-Wissen:** Optionaler Kiwix/ZIM-Reader mit klar gekennzeichnetem Offline-Wiki-Kontext.
+- **MAAT-Diagnose:** H/B/S/V/R, Stability, CCI, Balance, Claim Guard, Anti-Hallu und Reflection.
+- **Werkzeugschicht:** Code/LaTeX/HTML-Dateien erzeugen, Python ausführen, LaTeX zu PDF kompilieren und Fehler an die KI zurückgeben.
+- **Transparenz:** Log-Ansicht, Debug-Blöcke, sichtbare Quellenhinweise und aufklappbares Thinking-Fenster.
+
+## Why MAAT Web Core?
+
+Viele lokale KI-Tools sind sehr stark in einem bestimmten Bereich: Modell-Laden, Chat-UI, Rollen-/Charakter-Workflows oder API-Anbindung. MAAT Web Core konzentriert sich auf einen anderen Schwerpunkt: langfristiges, nachvollziehbares Arbeiten mit einer lokalen KI.
+
+Der Fokus liegt auf:
+
+- **Kontext statt nur Chatverlauf:** Memory, Projektwissen, Offline-Wiki und Chat-Suche arbeiten als getrennte Quellen.
+- **Lernen aus Feedback:** Lessons speichern Denkregeln, nicht nur Ereignisse.
+- **Quellenbewusstsein:** Memory, Wiki und Projektkontext sollen für das Modell unterscheidbar bleiben.
+- **Arbeitsfähigkeit:** Die KI kann Dateien erzeugen, Code prüfen, Python ausführen und LaTeX/PDF-Workflows begleiten.
+- **Selbstregulation:** MAAT-Module prüfen Antworten auf Klarheit, Balance, Evidenz, Kontextbezug und Halluzinationsrisiko.
+
+Kurz gesagt: MAAT Web Core ist weniger ein reines Chat-Frontend und mehr eine lokale KI-Arbeitsumgebung für längere Projekte, Forschung, Dokumentation und iteratives Denken.
 
 ## Was ist MAAT Web Core?
 
@@ -38,7 +66,7 @@ Diese Felder sind keine zwingende Philosophie für Nutzerinnen und Nutzer. Im We
 
 - **Lokaler Chat:** Weboberfläche mit Streaming, Chatliste, Copy, Vorlesen, Thinking-Fenster und Anhängen.
 - **Direkter GGUF-Loader:** Lädt Modelle über `llama-cpp-python`, inklusive Systemscan für Threads/GPU-Layers. Ausgelegt für moderne GGUF-Modelle wie Qwen 3.6 und Google Gemma 4.
-- **OpenAI-kompatibler Adapter:** Optionaler Betrieb gegen lokale `/v1/chat/completions`-APIs, z.B. llama.cpp server oder text-generation-webui mit OpenAI-API.
+- **OpenAI-kompatibler Adapter:** Optionaler Betrieb gegen lokale `/v1/chat/completions`-APIs, z.B. llama.cpp server oder andere lokale OpenAI-kompatible Backends.
 - **Super Memory:** Arbeits-, episodisches, semantisches und keyword-basiertes Gedächtnis mit User-Auswahl.
 - **Person Graph:** Strukturierte Beziehungen zwischen Usern und erwähnten Personen, inklusive Confidence und Status.
 - **Project Memory:** Projektwissen, Formeln, Paper, Trigger und Projektkontext getrennt von persönlichen Memories.
@@ -50,6 +78,29 @@ Diese Felder sind keine zwingende Philosophie für Nutzerinnen und Nutzer. Im We
 - **Adaptive Learning:** Speichert Lessons mit Confidence statt nur Ereignisse.
 - **Docs/File Builder:** Erkennt Code-/LaTeX-/HTML-Blöcke, speichert Dateien, kompiliert PDFs und kann Python ausführen.
 - **Plugin-System:** Kleine Erweiterungen können Hooks und Commands registrieren.
+
+## Voraussetzungen
+
+MAAT Web Core braucht eine lokale Python-Installation.
+
+Empfohlen:
+
+- Python 3.10 oder neuer
+- Python 3.11 empfohlen
+- `python3` und `python3 -m venv` müssen im Terminal verfügbar sein
+
+Prüfen:
+
+```bash
+python3 --version
+python3 -m venv --help
+```
+
+Falls Python fehlt:
+
+- macOS: Python von [python.org](https://www.python.org/downloads/) installieren oder per Homebrew: `brew install python`
+- Debian/Ubuntu: `sudo apt install python3 python3-venv curl`
+- Andere Linux-Distributionen: Python 3 und das jeweilige `venv`-Paket über den Paketmanager installieren
 
 ## Kurzstart
 
@@ -77,7 +128,7 @@ Danach erneut starten:
 ./setup.command
 ```
 
-Das Setup installiert die Python-Abhängigkeiten in `.venv`, prüft den RAM und fragt optional, ob ein empfohlenes Gemma-4-GGUF-Modell und/oder die deutsche Offline-Wikipedia-ZIM geladen werden soll.
+Das Setup installiert die Python-Abhängigkeiten in `.venv`, prüft den RAM und fragt optional, ob ein empfohlenes Gemma-4-GGUF-Modell und/oder die deutsche Offline-Wikipedia-ZIM geladen werden soll. GGUF-Modelle werden dabei über `huggingface_hub` geladen; die ZIM-Datei kommt direkt von Kiwix.
 
 Für den direkten GGUF-Loader fragt das Setup außerdem, ob `llama-cpp-python` installiert werden soll. Standard ist Apple Silicon mit Metal, sonst ein CPU-sicherer Build. Manuell steuerbar:
 
@@ -143,7 +194,7 @@ ab 32 GB    -> Gemma 4 Q4, ctx 40k
 Manueller Start:
 
 ```bash
-cd maat-web-core-public
+cd maat-web-core
 python3 run.py
 ```
 
@@ -288,18 +339,18 @@ Der Docs/File-Builder verwaltet erzeugte Dateien:
 
 ### OpenAI-kompatible API
 
-Standard:
-
-```text
-http://127.0.0.1:7860/v1
-```
-
-Der Adapter ist mit lokalen OpenAI-kompatiblen Backends nutzbar, z.B. llama.cpp server oder text-generation-webui mit aktivierter OpenAI-API.
-
-Für llama.cpp Server:
+Beispiel fuer einen lokalen OpenAI-kompatiblen Server:
 
 ```text
 http://127.0.0.1:8080/v1
+```
+
+Der Adapter ist mit lokalen OpenAI-kompatiblen Backends nutzbar, z.B. llama.cpp server oder andere lokale Tools, die `/v1/chat/completions` anbieten.
+
+Falls ein anderes lokales Backend einen anderen Port nutzt, trage dessen `/v1`-Basis-URL in den Settings ein, z.B.:
+
+```text
+http://127.0.0.1:<port>/v1
 ```
 
 ### Direkter llama.cpp GGUF Loader
@@ -791,6 +842,30 @@ Funktionen:
 
 Thinking-Code soll nicht als Datei gespeichert werden.
 
+### Python-Ausführung aktivieren
+
+Python-Ausführung ist aus Sicherheitsgründen standardmäßig deaktiviert. Aktivieren nur, wenn du lokal arbeitest und dem erzeugten Code vertraust.
+
+Über die UI:
+
+1. Settings öffnen.
+2. MAAT / Docs / File Builder Bereich öffnen.
+3. `Aktiv` eingeschaltet lassen.
+4. `Python ausführen` aktivieren.
+5. Optional `Im Terminal` aktivieren, wenn `.py`-Dateien in einem sichtbaren Terminalfenster laufen sollen.
+6. Speichern.
+
+Alternativ in `data/settings.json`:
+
+```json
+{
+  "file_builder_python_run_enabled": true,
+  "file_builder_python_run_in_terminal": false
+}
+```
+
+Wenn `file_builder_python_run_in_terminal` auf `true` steht, versucht MAAT Web Core ein lokales Terminal zu öffnen. Wenn es auf `false` steht, wird der Code im Python-Prozess/Environment des Web Core ausgeführt und das Ergebnis in der UI angezeigt.
+
 ## Commands
 
 Allgemein:
@@ -1030,7 +1105,7 @@ Besonders wichtig:
 
 ### Modelle
 
-Das Setup kann optional GGUF-Modelle herunterladen. Diese Downloads passieren nur nach Zustimmung und direkt von den jeweiligen Originalquellen, z.B. Hugging Face.
+Das Setup kann optional GGUF-Modelle herunterladen. Diese Downloads passieren nur nach Zustimmung und über `huggingface_hub` direkt von den jeweiligen Originalquellen, z.B. Hugging Face.
 
 Für Modelle gilt:
 

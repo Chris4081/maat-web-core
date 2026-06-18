@@ -1938,6 +1938,46 @@ textarea:focus {
   cursor: not-allowed;
 }
 
+body[data-stream-config-locked] #tab-model,
+body[data-stream-config-locked] #tab-settings,
+body[data-stream-config-locked] #tab-maat,
+body[data-stream-config-locked] #chatProjects,
+body[data-stream-config-locked] #chatDocs {
+  opacity: 0.58;
+  filter: grayscale(0.16);
+}
+
+body[data-stream-config-locked] #tab-model button,
+body[data-stream-config-locked] #tab-settings button,
+body[data-stream-config-locked] #tab-maat button,
+body[data-stream-config-locked] #chatProjects button,
+body[data-stream-config-locked] #chatDocs button {
+  cursor: not-allowed;
+}
+
+body[data-stream-config-locked] #tab-model input,
+body[data-stream-config-locked] #tab-model select,
+body[data-stream-config-locked] #tab-model textarea,
+body[data-stream-config-locked] #tab-model button,
+body[data-stream-config-locked] #tab-settings input,
+body[data-stream-config-locked] #tab-settings select,
+body[data-stream-config-locked] #tab-settings textarea,
+body[data-stream-config-locked] #tab-settings button,
+body[data-stream-config-locked] #tab-maat input,
+body[data-stream-config-locked] #tab-maat select,
+body[data-stream-config-locked] #tab-maat textarea,
+body[data-stream-config-locked] #tab-maat button,
+body[data-stream-config-locked] #chatProjects input,
+body[data-stream-config-locked] #chatProjects select,
+body[data-stream-config-locked] #chatProjects textarea,
+body[data-stream-config-locked] #chatProjects button,
+body[data-stream-config-locked] #chatDocs input,
+body[data-stream-config-locked] #chatDocs select,
+body[data-stream-config-locked] #chatDocs textarea,
+body[data-stream-config-locked] #chatDocs button {
+  pointer-events: none;
+}
+
 .mini-button.active,
 .toggle-button.active {
   border-color: rgba(120, 214, 178, 0.75);
@@ -2143,6 +2183,319 @@ textarea:focus {
 
   .message {
     max-width: calc(100vw - 36px);
+  }
+}
+
+@media (max-width: 640px) {
+  html,
+  body,
+  .app-shell {
+    height: 100dvh;
+  }
+
+  .topbar {
+    min-height: 50px;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  h1 {
+    font-size: 15px;
+  }
+
+  .brand p {
+    display: none;
+  }
+
+  .top-actions {
+    gap: 5px;
+  }
+
+  .theme-select,
+  .top-actions .mini-button,
+  .top-actions .button {
+    min-width: 0;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .tabs {
+    gap: 3px;
+    padding: 6px 8px 0;
+  }
+
+  .tab {
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 7px 7px 0 0;
+  }
+
+  #tab-chat {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .chat-history {
+    max-height: 98px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .history-head h2 {
+    font-size: 12px;
+  }
+
+  .chat-search {
+    display: none;
+  }
+
+  .chat-list {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+  }
+
+  .chat-item {
+    min-width: 176px;
+    min-height: 48px;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 7px 8px;
+  }
+
+  .chat-item-preview,
+  .chat-item-meta,
+  .chat-item-actions {
+    display: none;
+  }
+
+  .chat-workspace {
+    min-height: 0;
+  }
+
+  .messages,
+  .chat-view-tabs,
+  .attachment-tray,
+  .composer,
+  .chat-log,
+  .chat-help,
+  .chat-projects,
+  .chat-docs {
+    width: calc(100% - 16px);
+  }
+
+  .messages {
+    padding: 10px 0 8px;
+    gap: 10px;
+  }
+
+  .message {
+    max-width: 100%;
+    padding: 11px 12px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .message.assistant {
+    width: 100%;
+    padding: 3px 0;
+  }
+
+  .message.user {
+    max-width: min(92%, 420px);
+  }
+
+  .message h3 {
+    font-size: 15px;
+  }
+
+  .message h4,
+  .message h5,
+  .message h6 {
+    font-size: 14px;
+  }
+
+  .copyable-block,
+  .maat-progress-card,
+  .think-box,
+  .maat-memory-save-box,
+  .file-builder-card {
+    max-width: 100%;
+  }
+
+  .message table,
+  .copyable-block,
+  .file-builder-card,
+  .maat-memory-save-box,
+  .attachment-card {
+    overflow-x: auto;
+  }
+
+  .message pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .copyable-block pre,
+  .copyable-block code,
+  .math-block,
+  .think-raw,
+  .maat-memory-save-box code {
+    font-size: 11px;
+  }
+
+  .chat-view-tabs {
+    gap: 4px;
+    margin-bottom: 5px;
+    overflow-x: auto;
+  }
+
+  .chat-mini-tab {
+    min-width: 48px;
+    height: 25px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .composer {
+    grid-template-columns: minmax(0, 1fr) 74px;
+    grid-template-areas:
+      "controls think"
+      "input send";
+    align-items: end;
+    gap: 6px;
+    margin-bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 8px;
+    border-radius: 8px;
+  }
+
+  .chat-control-stack {
+    grid-area: controls;
+    min-width: 0;
+    grid-template-columns: minmax(0, 132px) auto;
+    align-items: end;
+    gap: 6px;
+  }
+
+  .micro-label {
+    display: none;
+  }
+
+  .mini-select {
+    min-width: 0;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+
+  .model-picker {
+    min-width: 0;
+  }
+
+  .model-picker .mini-button {
+    width: 72px;
+    min-width: 0;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .model-popover {
+    width: min(330px, calc(100vw - 24px));
+  }
+
+  .composer textarea {
+    grid-area: input;
+    min-height: 46px;
+    max-height: 118px;
+    padding: 10px;
+    font-size: 16px;
+    line-height: 1.35;
+  }
+
+  .thinking-stack {
+    grid-area: think;
+    width: 74px;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .maat-think-slider-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .maat-think-slider-row .tiny-toggle,
+  .maat-think-slider-label {
+    display: none;
+  }
+
+  .thinking-mini {
+    width: 74px;
+    min-width: 0;
+    height: 34px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .send-button {
+    grid-area: send;
+    min-width: 74px;
+    min-height: 46px;
+    padding: 0 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 420px) {
+  .chat-history {
+    max-height: 82px;
+  }
+
+  .chat-item {
+    min-width: 148px;
+  }
+
+  .composer {
+    width: calc(100% - 10px);
+    grid-template-columns: minmax(0, 1fr) 68px;
+    padding: 6px;
+  }
+
+  .chat-control-stack {
+    grid-template-columns: minmax(0, 118px) 64px;
+  }
+
+  .model-picker .mini-button,
+  .thinking-mini,
+  .thinking-stack,
+  .send-button {
+    width: 68px;
+    min-width: 0;
+  }
+
+  .messages,
+  .chat-view-tabs,
+  .attachment-tray,
+  .chat-log,
+  .chat-help,
+  .chat-projects,
+  .chat-docs {
+    width: calc(100% - 10px);
   }
 }
 

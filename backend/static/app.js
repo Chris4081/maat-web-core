@@ -7,6 +7,7 @@ let isSending = false;
 let inputIsComposing = false;
 let pendingAttachments = [];
 let activeSpeakButton = null;
+let activeSpeechMode = null;
 let projectsLoaded = false;
 let docsLoaded = false;
 let personGraphCache = { entries: [], selectedId: "" };
@@ -1636,7 +1637,48 @@ function resetSpeakButton(button = activeSpeakButton) {
   button.textContent = "Vorlesen";
   button.classList.remove("active");
   button.title = "Nachricht vorlesen";
-  if (button === activeSpeakButton) activeSpeakButton = null;
+  if (button === activeSpeakButton) {
+    activeSpeakButton = null;
+    activeSpeechMode = null;
+  }
+}
+
+function preferredBrowserVoice() {
+  if (!window.speechSynthesis?.getVoices) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  return (
+    voices.find((voice) => /^de[-_]/i.test(voice.lang || "") && /anna|siri|premium|german|deutsch/i.test(voice.name || "")) ||
+    voices.find((voice) => /^de[-_]/i.test(voice.lang || "")) ||
+    null
+  );
+}
+
+function speakWithBrowser(value) {
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+    return { ok: false, error: "Browser-Sprachausgabe nicht verfügbar." };
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(value);
+    utterance.lang = "de-DE";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    const voice = preferredBrowserVoice();
+    if (voice) utterance.voice = voice;
+    utterance.onend = () => resetSpeakButton();
+    utterance.onerror = () => resetSpeakButton();
+    window.speechSynthesis.speak(utterance);
+    window.setTimeout(() => {
+      try {
+        window.speechSynthesis.resume();
+      } catch {
+        // Some browsers do not need or support resume here.
+      }
+    }, 80);
+    return { ok: true, status: "browser-speaking" };
+  } catch (error) {
+    return { ok: false, error: String(error.message || error) };
+  }
 }
 
 async function stopSpeaking() {
@@ -1659,15 +1701,10 @@ async function stopSpeaking() {
 async function speakText(text) {
   const value = String(text ?? "").trim();
   if (!value) return { ok: false, error: "Kein Text" };
-  function browserSpeak() {
-    if (window.speechSynthesis && window.SpeechSynthesisUtterance) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(value);
-      utterance.lang = "de-DE";
-      window.speechSynthesis.speak(utterance);
-      return { ok: true, status: "browser-speaking" };
-    }
-    return null;
+  const browserResult = speakWithBrowser(value);
+  if (browserResult.ok) {
+    activeSpeechMode = "browser";
+    return browserResult;
   }
   try {
     const response = await fetch("/api/speak", {
@@ -1676,12 +1713,10 @@ async function speakText(text) {
       body: JSON.stringify({ text: value }),
     });
     const result = await response.json();
-    if (result?.ok) return result;
-    return browserSpeak() || result;
+    if (result?.ok) activeSpeechMode = "server";
+    return result;
   } catch (error) {
-    const fallback = browserSpeak();
-    if (fallback) return fallback;
-    return { ok: false, error: String(error.message || error) };
+    return { ok: false, error: String(error.message || error || browserResult.error) };
   }
 }
 
@@ -2352,6 +2387,48 @@ function setSendButtonStreaming(streaming) {
   sendButton.textContent = streaming ? "Stop" : "Senden";
   sendButton.title = streaming ? "Antwort stoppen" : "Nachricht senden";
   sendButton.setAttribute("aria-label", streaming ? "Antwort stoppen" : "Nachricht senden");
+}
+
+const STREAM_LOCK_CONTROL_SELECTOR = [
+  "#tab-model input",
+  "#tab-model select",
+  "#tab-model textarea",
+  "#tab-model button",
+  "#tab-settings input",
+  "#tab-settings select",
+  "#tab-settings textarea",
+  "#tab-settings button",
+  "#tab-maat input",
+  "#tab-maat select",
+  "#tab-maat textarea",
+  "#tab-maat button",
+  "#chatProjects input",
+  "#chatProjects select",
+  "#chatProjects textarea",
+  "#chatProjects button",
+  "#chatDocs input",
+  "#chatDocs select",
+  "#chatDocs textarea",
+  "#chatDocs button",
+].join(",");
+
+function setConfigurationLocked(locked) {
+  document.body.toggleAttribute("data-stream-config-locked", Boolean(locked));
+  for (const control of document.querySelectorAll(STREAM_LOCK_CONTROL_SELECTOR)) {
+    if (locked) {
+      if (!control.dataset.streamLockActive) {
+        control.dataset.streamLockActive = "1";
+        control.dataset.streamLockWasDisabled = control.disabled ? "1" : "0";
+      }
+      control.disabled = true;
+      continue;
+    }
+    if (control.dataset.streamLockActive) {
+      control.disabled = control.dataset.streamLockWasDisabled === "1";
+      delete control.dataset.streamLockActive;
+      delete control.dataset.streamLockWasDisabled;
+    }
+  }
 }
 
 function stopCurrentStream() {
@@ -3428,12 +3505,18 @@ async function loadState() {
   renderPlugins(stateCache.plugins);
   fillSettings(stateCache.settings);
   updateEngineControls(stateCache);
+  setConfigurationLocked(isSending);
   statusLine.textContent = describeModel(stateCache.settings);
   await loadChats();
   await loadPersonGraph(stateCache.settings?.supermem_current_user || "User");
 }
 
 async function saveSettings(statusElement = null) {
+  if (isSending) {
+    if (statusElement) flashSavedStatus(statusElement, "Stream läuft");
+    statusLine.textContent = "Settings sind während des Streamings gesperrt.";
+    return null;
+  }
   const payload = {
     model_adapter: document.querySelector("#modelAdapter").value,
     api_base: document.querySelector("#apiBase").value.trim(),
@@ -3639,6 +3722,7 @@ async function saveSettings(statusElement = null) {
   if (data.maat_antihallu) stateCache.maat_antihallu = data.maat_antihallu;
   updateAntiHalluControls(data.settings, stateCache);
   updateLoaderTuningControls(data.settings, stateCache.system_scan || {});
+  setConfigurationLocked(isSending);
   statusLine.textContent = "Einstellungen gespeichert";
   flashSavedStatus(statusElement);
 }
@@ -3673,6 +3757,7 @@ function parseSseEvents(buffer) {
 async function sendMessage(text) {
   if (isSending) return;
   isSending = true;
+  setConfigurationLocked(true);
   const startedChatId = currentChatId;
   addMessage("user", text);
   const assistant = addMessage("assistant", "");
@@ -3904,6 +3989,7 @@ async function sendMessage(text) {
           }
           addLogEntry(item.data);
         }
+        if (isSending) setConfigurationLocked(true);
         if (isViewingStream(streamState)) scrollMessagesToBottom();
       }
     }
@@ -3952,6 +4038,8 @@ async function sendMessage(text) {
     } catch (error) {
       console.warn("State refresh failed after chat stream", error);
       statusLine.textContent = "Antwort fertig · Status-Refresh fehlgeschlagen";
+    } finally {
+      setConfigurationLocked(false);
     }
   }
 }
