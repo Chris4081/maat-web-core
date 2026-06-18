@@ -18,13 +18,16 @@ Mitmachen und Sicherheit: [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SE
 
 ## Screenshots
 
-### Desktop
+<p>
+  <a href="docs/screenshots/chatansicht.png">
+    <img src="docs/screenshots/chatansicht.png" alt="MAAT Web Core Desktop Chat" width="360">
+  </a>
+  <a href="docs/screenshots/mobileansichtchat.jpg">
+    <img src="docs/screenshots/mobileansichtchat.jpg" alt="MAAT Web Core Mobile Chat" width="180">
+  </a>
+</p>
 
-![MAAT Web Core Desktop Chat](docs/screenshots/chatansicht.png)
-
-### Mobile
-
-![MAAT Web Core Mobile Chat](docs/screenshots/mobileansichtchat.jpg)
+Klicken zum Vergrößern.
 
 ## Highlights
 
