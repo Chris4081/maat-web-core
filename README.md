@@ -16,6 +16,16 @@ Mitmachen und Sicherheit: [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SE
 
 > **Hinweis:** MAAT Web Core ist eine frühe öffentliche Version und wird aktiv weiterentwickelt. Es können noch Fehler, unvollständige Funktionen und Modell-/Plattform-Unterschiede auftreten. Bugfixes, Tests und Verbesserungen werden schrittweise ergänzt.
 
+## Screenshots
+
+### Desktop
+
+![MAAT Web Core Desktop Chat](docs/screenshots/chatansicht.png)
+
+### Mobile
+
+![MAAT Web Core Mobile Chat](docs/screenshots/mobileansichtchat.jpg)
+
 ## Highlights
 
 - **Local-first:** Läuft lokal mit GGUF-Modellen über `llama-cpp-python` oder optional über lokale OpenAI-kompatible APIs.
