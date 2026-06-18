@@ -2807,12 +2807,47 @@ function renderFavoriteModelsInto(container) {
 
 function updateThinkingControls() {
   const enabled = Boolean(stateCache?.settings?.enable_thinking);
-  document.querySelector("#enableThinking").checked = enabled;
-  chatThinkingToggle.classList.toggle("active", enabled);
-  chatThinkingToggle.textContent = enabled ? "Think an" : "Think aus";
-  chatThinkingToggle.title = enabled
-    ? "Qwen Thinking sichtbar erlauben"
-    : "Thinking hart schließen und beim Streaming filtern";
+  const enableThinking = document.querySelector("#enableThinking");
+  if (enableThinking) enableThinking.checked = enabled;
+  if (chatThinkingToggle) {
+    chatThinkingToggle.classList.toggle("active", enabled);
+    chatThinkingToggle.textContent = enabled ? "Think an" : "Think aus";
+    chatThinkingToggle.title = enabled
+      ? "Thinking ist aktiv. Klicken zum Ausschalten."
+      : "Thinking ist aus. Klicken zum Einschalten.";
+  }
+}
+
+async function saveThinkingSetting(enabled) {
+  if (!stateCache?.settings) return false;
+  if (isSending) {
+    statusLine.textContent = "Thinking kann während des Streamings nicht umgeschaltet werden.";
+    updateThinkingControls();
+    return false;
+  }
+  const previous = Boolean(stateCache.settings.enable_thinking);
+  stateCache.settings.enable_thinking = Boolean(enabled);
+  updateThinkingControls();
+  try {
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enable_thinking: Boolean(enabled) }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (data.settings) {
+      stateCache.settings = data.settings;
+    }
+    updateThinkingControls();
+    statusLine.textContent = stateCache.settings.enable_thinking ? "Thinking aktiviert" : "Thinking deaktiviert";
+    return true;
+  } catch (error) {
+    stateCache.settings.enable_thinking = previous;
+    updateThinkingControls();
+    statusLine.textContent = `Thinking konnte nicht gespeichert werden: ${error.message}`;
+    return false;
+  }
 }
 
 function maatThinkingInfo(levelValue) {
@@ -4107,11 +4142,8 @@ themeModeSelect?.addEventListener("change", () => {
   applyThemeMode(mode, true);
 });
 document.querySelector("#modelAdapter").addEventListener("change", updateAdapterFields);
-document.querySelector("#enableThinking").addEventListener("change", () => {
-  if (stateCache?.settings) {
-    stateCache.settings.enable_thinking = document.querySelector("#enableThinking").checked;
-  }
-  updateThinkingControls();
+document.querySelector("#enableThinking").addEventListener("change", async () => {
+  await saveThinkingSetting(document.querySelector("#enableThinking").checked);
 });
 document.querySelector("#maxTokensFromCtx").addEventListener("change", updateMaxTokenControls);
 maatThinkingLevel?.addEventListener("change", async (event) => {
@@ -4658,11 +4690,7 @@ chatFavoriteModel.addEventListener("blur", () => {
 });
 chatThinkingToggle.addEventListener("click", async () => {
   if (!stateCache?.settings) return;
-  stateCache.settings.enable_thinking = !Boolean(stateCache.settings.enable_thinking);
-  document.querySelector("#enableThinking").checked = stateCache.settings.enable_thinking;
-  updateThinkingControls();
-  await saveSettings();
-  statusLine.textContent = stateCache.settings.enable_thinking ? "Thinking aktiviert" : "Thinking deaktiviert";
+  await saveThinkingSetting(!Boolean(stateCache.settings.enable_thinking));
 });
 sendButton?.addEventListener("click", (event) => {
   if (!isSending) return;

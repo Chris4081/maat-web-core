@@ -577,6 +577,11 @@ class ChatLoop:
     def _thinking_controlled_user_text(self, user_text: str) -> str:
         text = re.sub(r"(?im)^\s*/(?:no_)?think\s*$", "", user_text.rstrip()).strip()
         text = re.sub(r"(?i)\s*/(?:no_)?think\b", "", text).strip()
+        if self.settings.model_adapter == "llama_cpp_direct":
+            model_name = Path(str(self.settings.llama_model_path or self.settings.model_name or "")).name.lower()
+            if "qwen" in model_name:
+                directive = "/think" if self.settings.enable_thinking else "/no_think"
+                return f"{text}\n\n{directive}".strip()
         return text
 
     def _messages(

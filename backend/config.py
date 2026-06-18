@@ -50,7 +50,7 @@ class RuntimeSettings:
     enable_thinking: bool = False
     temperature: float = 0.7
     top_p: float = 0.9
-    max_tokens: int = 512
+    max_tokens: int = 4096
     max_tokens_from_ctx: bool = False
     history_limit: int = 12
     chat_compressor_enabled: bool = True
