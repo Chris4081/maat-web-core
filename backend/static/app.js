@@ -13,6 +13,7 @@ let docsLoaded = false;
 let personGraphCache = { entries: [], selectedId: "" };
 let currentAbortController = null;
 const activeStreams = new Map();
+let chatListRefreshPromise = null;
 
 const PASTE_ATTACHMENT_THRESHOLD = 1600;
 const PASTE_ATTACHMENT_MIN_LINES = 20;
@@ -2312,17 +2313,52 @@ function registerStream(stream) {
   activeStreams.set(streamKey(stream.chatId), stream);
 }
 
+function ensureChatListEntry(chatId, title = "Neuer Chat") {
+  if (chatId == null) return;
+  const exists = chatsCache.some((chat) => Number(chat.id) === Number(chatId));
+  if (exists) return;
+  chatsCache = [
+    {
+      id: chatId,
+      title,
+      preview: "Antwort läuft...",
+      message_count: 0,
+      updated_at: new Date().toISOString(),
+    },
+    ...chatsCache,
+  ];
+  renderChatList();
+}
+
+function refreshChatListSoon(delayMs = 0) {
+  window.setTimeout(() => {
+    if (chatListRefreshPromise) return;
+    chatListRefreshPromise = loadChats()
+      .catch((error) => {
+        console.warn("Chat list refresh failed", error);
+      })
+      .finally(() => {
+        chatListRefreshPromise = null;
+      });
+  }, Math.max(0, Number(delayMs) || 0));
+}
+
 function updateStreamChatId(stream, chatId) {
   if (!stream || chatId == null) return;
   const oldKey = streamKey(stream.chatId);
   const wasVisible = isViewingStream(stream);
+  const changed = !sameChatId(stream.chatId, chatId);
   activeStreams.delete(oldKey);
   stream.chatId = chatId;
   activeStreams.set(streamKey(chatId), stream);
   if (wasVisible) {
     currentChatId = chatId;
+    ensureChatListEntry(chatId);
     renderChatList();
+  } else if (changed) {
+    ensureChatListEntry(chatId);
   }
+  if (changed) refreshChatListSoon(250);
 }
 
 function ensureStreamAssistantElement(stream) {
@@ -3873,6 +3909,7 @@ async function sendMessage(text) {
           if (item.data.chat_id != null) {
             updateStreamChatId(streamState, item.data.chat_id);
           }
+          refreshChatListSoon(0);
           streamState.done = true;
           window.setTimeout(() => {
             const key = streamKey(streamState.chatId);

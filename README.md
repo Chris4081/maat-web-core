@@ -894,6 +894,10 @@ Memory:
 ```text
 /maat memory
 /maat memory recall <suchtext>
+/maat memory selfsave on
+/maat memory selfsave off
+/maat memory savebox on
+/maat memory savebox off
 /maat memory save <text>
 /maat memory search <query>
 /maat memory stats

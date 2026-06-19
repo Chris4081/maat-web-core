@@ -25,15 +25,86 @@ def _weekday_text(now: datetime | None = None) -> str:
     return weekdays[(now or now_local()).weekday()]
 
 
-def build_reality_block() -> str:
+def _parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.astimezone()
+    return parsed.astimezone()
+
+
+def relative_time_text(past: datetime | str | None, now: datetime | None = None) -> str:
+    if isinstance(past, str):
+        past_dt = _parse_datetime(past)
+    else:
+        past_dt = past.astimezone() if past else None
+    if past_dt is None:
+        return "keine frühere Nachricht in diesem Chat"
+
+    current = now or now_local()
+    delta = current - past_dt
+    seconds = max(0, int(delta.total_seconds()))
+    minutes = seconds // 60
+    hours = seconds // 3600
+    days = seconds // 86400
+
+    if seconds < 30:
+        return "gerade eben"
+    if minutes < 3:
+        return "ein kleiner Moment"
+    if minutes < 60:
+        return f"vor {minutes} Minuten"
+    if hours < 2:
+        return "vor etwa 1 Stunde"
+    if hours < 6:
+        return "eine Weile"
+    if hours < 24:
+        return f"vor {hours} Stunden"
+    if days == 1:
+        return "vor 1 Tag"
+    if days < 7:
+        return f"vor {days} Tagen"
+    if days < 14:
+        return "vor 1 Woche"
+    if days < 60:
+        weeks = max(2, round(days / 7))
+        return f"vor {weeks} Wochen"
+    if days < 365:
+        months = max(2, round(days / 30))
+        return f"vor {months} Monaten"
+    years = max(1, round(days / 365))
+    return "vor 1 Jahr" if years == 1 else f"vor {years} Jahren"
+
+
+def _datetime_text(value: datetime | str | None) -> str:
+    if isinstance(value, str):
+        parsed = _parse_datetime(value)
+    else:
+        parsed = value.astimezone() if value else None
+    if parsed is None:
+        return "-"
+    return parsed.strftime("%d.%m.%Y %H:%M")
+
+
+def build_reality_block(last_activity_at: datetime | str | None = None) -> str:
     now = now_local()
+    relative_last = relative_time_text(last_activity_at, now)
+    absolute_last = _datetime_text(last_activity_at)
     return (
         "[MAAT_REALITY]\n"
         f"Heutiges Datum: {_date_text(now)}\n"
         f"Wochentag: {_weekday_text(now)}\n"
         f"Aktuelle Uhrzeit: {_time_text(now)}\n"
+        f"Letzte Chat-Aktivität vor dieser Usernachricht: {relative_last}\n"
+        f"Letzter Chat-Zeitstempel: {absolute_last}\n"
         "Regel:\n"
         "- Aktuelle Uhrzeit und aktuelles Datum sind Live-Kontext, nicht Memory.\n"
+        "- Der letzte Chat-Zeitstempel beschreibt nur den Abstand zur vorherigen Nachricht in diesem Chat.\n"
+        "- Nutze die Zeitabstandsinfo nur natürlich, wenn sie für die Antwort relevant ist.\n"
         "- Gespeicherte Nutzerfakten kommen aus Memory.\n"
         "- Wenn weder Live-Kontext noch Memory ausreichen: nichts erfinden.\n"
         "[/MAAT_REALITY]"
@@ -101,13 +172,13 @@ def direct_reality_answer(settings: Any, user_text: str) -> str | None:
     return None
 
 
-def build_reality_prompt(settings: Any, user_text: str = "") -> str:
+def build_reality_prompt(settings: Any, user_text: str = "", last_activity_at: datetime | str | None = None) -> str:
     if getattr(settings, "reality_enabled", True) is False:
         return ""
     if getattr(settings, "reality_inject_time", True) is False:
         return ""
 
-    block = build_reality_block()
+    block = build_reality_block(last_activity_at)
     _LAST_CONTEXT.clear()
     _LAST_CONTEXT.update(
         {
@@ -118,6 +189,8 @@ def build_reality_prompt(settings: Any, user_text: str = "") -> str:
             "date": _date_text(),
             "time": _time_text(),
             "weekday": _weekday_text(),
+            "last_activity_at": _datetime_text(last_activity_at),
+            "last_activity_relative": relative_time_text(last_activity_at),
         }
     )
 

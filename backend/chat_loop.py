@@ -522,6 +522,7 @@ class ChatLoop:
         claim_prompt: str = "",
         lessons_prompt: str = "",
         context_optimizer_prompt: str = "",
+        last_activity_at: str | None = None,
     ) -> str:
         prompt = self.settings.system_prompt.strip()
         if self.settings.enable_thinking:
@@ -565,7 +566,7 @@ class ChatLoop:
             visible_reasoning=bool(self.settings.enable_thinking),
         )
         identity = build_identity_prompt(self.settings, user_text, chat_id)
-        reality = build_reality_prompt(self.settings, user_text)
+        reality = build_reality_prompt(self.settings, user_text, last_activity_at=last_activity_at)
         reflection = build_reflection_prompt(self.settings, user_text)
         antihallu = build_antihallu_prompt(self.settings, user_text)
         maat_thinking = build_prompt_block(
@@ -598,6 +599,7 @@ class ChatLoop:
         context_optimizer_prompt: str = "",
         context: dict[str, Any] | None = None,
         prompt_context_limit_tokens: int | None = None,
+        last_activity_at: str | None = None,
     ) -> list[dict[str, str]]:
         compressor_enabled = bool(getattr(self.settings, "chat_compressor_enabled", True))
         if compressor_enabled:
@@ -633,6 +635,7 @@ class ChatLoop:
             claim_prompt,
             lessons_prompt,
             context_optimizer_prompt,
+            last_activity_at,
         )
         if system_addons:
             system_prompt = f"{system_prompt}\n\n" + "\n\n".join(system_addons)
@@ -701,7 +704,9 @@ class ChatLoop:
             return
 
         yield sse("meta", {"chat_id": chat_id, "plugins": self.plugins.info()})
-        had_prior_messages = bool(self.database.recent_messages(chat_id, limit=1))
+        prior_messages = self.database.recent_messages(chat_id, limit=1)
+        had_prior_messages = bool(prior_messages)
+        last_activity_at = str(prior_messages[-1].get("created_at") or "") if prior_messages else None
 
         if self.commands.match(raw_text):
             reply = self.commands.execute(raw_text, context)
@@ -984,6 +989,7 @@ class ChatLoop:
             context_optimizer_prompt=context_optimizer_prompt,
             context=context,
             prompt_context_limit_tokens=int(options.get("llama_n_ctx") or self.settings.llama_n_ctx),
+            last_activity_at=last_activity_at,
         )
         messages, prompt_fit_info = _fit_messages_to_context(messages, int(options.get("llama_n_ctx") or 4096))
         options.update(

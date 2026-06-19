@@ -5,6 +5,7 @@ from collections import Counter
 from typing import Any
 
 from .config import RuntimeSettings
+from .chat_titles import smart_chat_title_from_messages
 from .maat_file_builder import strip_file_builder_chat_cards, strip_file_builder_tags
 
 
@@ -196,6 +197,10 @@ def _title_case_topic(value: str) -> str:
 
 
 def _topic_title(messages: list[dict[str, Any]], max_parts: int = 3) -> str:
+    smart_title = smart_chat_title_from_messages(messages, fallback="")
+    if smart_title:
+        return smart_title
+
     joined = "\n".join(str(item.get("content") or "") for item in messages)
     parts: list[str] = []
     for pattern, label in TOPIC_ALIASES:

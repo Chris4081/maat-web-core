@@ -1602,7 +1602,7 @@ class WebCoreRuntime:
                 "## MAAT Kurzbefehle",
                 "- `/maat help` — diese Hilfe",
                 "- `/maat status` — Systemstatus",
-                "- `/maat memory recall <suchtext>` — Erinnerungen suchen",
+                "- `/maat memory recall <suchtext>` · `/maat memory selfsave on|off` — Erinnerungen suchen oder KI-SelfSave steuern",
                 "- `/maat graph` — Personen-Graph anzeigen",
                 "- `/maat mode` · `/maat mode test <text>` — erkannten Antwortmodus anzeigen, ohne Prompt-Injection",
                 "- `/maat lessons` · `/maat lessons add <category>|<type>|<lesson>` — adaptive Denkregeln anzeigen oder speichern",

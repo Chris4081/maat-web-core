@@ -1,30 +1,16 @@
 from __future__ import annotations
 
-import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .chat_titles import smart_chat_title_from_text, visible_message_text
 from .config import DATABASE_PATH, ensure_directories
 
 
 def now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
-
-
-def visible_message_text(content: str) -> str:
-    def replacement(match: re.Match[str]) -> str:
-        attrs = dict(re.findall(r'([a-z0-9_-]+)="([^"]*)"', match.group(1), flags=re.I))
-        name = attrs.get("name") or "Textanhang"
-        return f" Anhang: {name} "
-
-    return re.sub(
-        r"\[MAAT_ATTACHMENT([^\]]*)\]\s*[\s\S]*?\s*\[/MAAT_ATTACHMENT\]",
-        replacement,
-        str(content or ""),
-        flags=re.I,
-    )
 
 
 class Database:
@@ -260,8 +246,7 @@ class Database:
         ).fetchone()
         if not row:
             return "Neuer Chat"
-        words = visible_message_text(row["content"]).strip().replace("\n", " ").split()
-        return " ".join(words[:7])[:70] or "Neuer Chat"
+        return smart_chat_title_from_text(row["content"], fallback="Neuer Chat")
 
     def _chat_title_locked(self, chat_id: int) -> bool:
         row = self.connection.execute("SELECT title_locked FROM chats WHERE id = ?", (chat_id,)).fetchone()

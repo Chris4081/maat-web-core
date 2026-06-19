@@ -1113,29 +1113,81 @@ def _time_window(query: str) -> dict[str, Any] | None:
         end = start + timedelta(days=1)
         return {"start": start.timestamp(), "end": end.timestamp(), "label": label, "kind": "day"}
 
+    if re.search(r"\bheute\b", folded):
+        return day_window(0, "heute")
     if "vorgestern" in folded:
         return day_window(2, "vorgestern")
     if "gestern" in folded:
         return day_window(1, "gestern")
 
-    match = re.search(r"\bvor\s+(\d{1,4})\s+(tag|tagen|woche|wochen|monat|monaten|jahr|jahren)\b", folded)
+    number_words = {
+        "ein": 1,
+        "eine": 1,
+        "einer": 1,
+        "einem": 1,
+        "einen": 1,
+        "zwei": 2,
+        "drei": 3,
+        "vier": 4,
+        "fuenf": 5,
+        "funf": 5,
+        "fünf": 5,
+        "sechs": 6,
+        "sieben": 7,
+        "acht": 8,
+        "neun": 9,
+        "zehn": 10,
+        "elf": 11,
+        "zwoelf": 12,
+        "zwolf": 12,
+        "zwölf": 12,
+    }
+
+    def parse_count(raw_value: str) -> int:
+        raw_value = str(raw_value or "").strip()
+        if raw_value.isdigit():
+            return int(raw_value)
+        return int(number_words.get(raw_value, 1))
+
+    def ago_label(value: int, singular: str, plural: str) -> str:
+        return f"vor {value} {singular if value == 1 else plural}"
+
+    match = re.search(
+        r"\bvor\s+(\d{1,4}|ein|eine|einer|einem|einen|zwei|drei|vier|fuenf|funf|fünf|sechs|sieben|acht|neun|zehn|elf|zwoelf|zwolf|zwölf)\s+"
+        r"(tag|tagen|woche|wochen|monat|monaten|jahr|jahren)\b",
+        folded,
+    )
     if match:
-        value = int(match.group(1))
+        value = parse_count(match.group(1))
         unit = match.group(2)
         if unit.startswith("tag"):
-            return day_window(value, f"vor {value} Tagen")
+            return day_window(value, ago_label(value, "Tag", "Tagen"))
         if unit.startswith("woche"):
             days = value * 7
             center = today - timedelta(days=days)
-            return {"start": (center - timedelta(days=3)).timestamp(), "end": (center + timedelta(days=4)).timestamp(), "label": f"vor {value} Wochen", "kind": "around"}
+            return {"start": (center - timedelta(days=3)).timestamp(), "end": (center + timedelta(days=4)).timestamp(), "label": ago_label(value, "Woche", "Wochen"), "kind": "around"}
         if unit.startswith("monat"):
             days = value * 30
             center = today - timedelta(days=days)
-            return {"start": (center - timedelta(days=5)).timestamp(), "end": (center + timedelta(days=6)).timestamp(), "label": f"vor {value} Monaten", "kind": "around"}
+            return {"start": (center - timedelta(days=5)).timestamp(), "end": (center + timedelta(days=6)).timestamp(), "label": ago_label(value, "Monat", "Monaten"), "kind": "around"}
         if unit.startswith("jahr"):
             days = value * 365
             center = today - timedelta(days=days)
-            return {"start": (center - timedelta(days=14)).timestamp(), "end": (center + timedelta(days=15)).timestamp(), "label": f"vor {value} Jahren", "kind": "around"}
+            return {"start": (center - timedelta(days=14)).timestamp(), "end": (center + timedelta(days=15)).timestamp(), "label": ago_label(value, "Jahr", "Jahren"), "kind": "around"}
+
+    if re.search(r"\bletzte(?:n|r|s)?\s+woche\b", folded):
+        start = today - timedelta(days=today.weekday() + 7)
+        end = start + timedelta(days=7)
+        return {"start": start.timestamp(), "end": end.timestamp(), "label": "letzte Woche", "kind": "range"}
+    if re.search(r"\bletzte(?:n|r|s)?\s+monat\b", folded):
+        first_this_month = datetime(year=today.year, month=today.month, day=1)
+        last_prev_month = first_this_month - timedelta(days=1)
+        start = datetime(year=last_prev_month.year, month=last_prev_month.month, day=1)
+        return {"start": start.timestamp(), "end": first_this_month.timestamp(), "label": "letzter Monat", "kind": "range"}
+    if re.search(r"\bletzte(?:n|r|s)?\s+jahr\b", folded):
+        start = datetime(year=today.year - 1, month=1, day=1)
+        end = datetime(year=today.year, month=1, day=1)
+        return {"start": start.timestamp(), "end": end.timestamp(), "label": "letztes Jahr", "kind": "range"}
 
     date_match = re.search(r"\b(\d{1,2})[.\-/](\d{1,2})(?:[.\-/](20\d{2}|19\d{2}))?\b", folded)
     if date_match:
@@ -1180,9 +1232,12 @@ def _recall_time(database: Database, query: str, settings: Any, limit: int) -> l
         item = _row_to_item(row)
         item["source"] = "time"
         item["time_window"] = window["label"]
-        item["score"] = round(0.95 + float(item.get("priority") or 0) * 0.2 + _author_bonus(item, settings), 3)
+        item["score"] = round(2.20 + float(item.get("priority") or 0) * 0.25 + _author_bonus(item, settings), 3)
         items.append(item)
-    items.extend(recall_archived_sources_for_window(database, window, settings, limit))
+    archived_sources = recall_archived_sources_for_window(database, window, settings, limit)
+    for item in archived_sources:
+        item["score"] = max(float(item.get("score") or 0), 2.05 if window.get("kind") == "day" else 1.85)
+    items.extend(archived_sources)
     if not items and window.get("kind") == "day":
         start = float(window["start"])
         fallback = database.connection.execute(
@@ -1200,7 +1255,7 @@ def _recall_time(database: Database, query: str, settings: Any, limit: int) -> l
             item["source"] = "time"
             item["time_exact_miss"] = window["label"]
             item["time_window"] = f"{window['label']} ±3 Tage"
-            item["score"] = round(0.72 + float(item.get("priority") or 0) * 0.2 + _author_bonus(item, settings), 3)
+            item["score"] = round(1.55 + float(item.get("priority") or 0) * 0.18 + _author_bonus(item, settings), 3)
             items.append(item)
     if not items or window.get("kind") != "day":
         archive_items = recall_archive_for_window(database, window, settings, limit)
@@ -1208,6 +1263,8 @@ def _recall_time(database: Database, query: str, settings: Any, limit: int) -> l
             if window.get("kind") == "day" and not items:
                 for item in archive_items:
                     item["time_exact_miss"] = window["label"]
+            for item in archive_items:
+                item["score"] = max(float(item.get("score") or 0), 1.75 if window.get("kind") == "day" else 1.65)
             items.extend(archive_items)
     return items[:limit]
 
@@ -1268,12 +1325,19 @@ def _relative_time(ts: Any) -> str:
 
 def format_memory_block(memories: list[dict[str, Any]], settings: Any) -> str:
     current = _current_user(settings)
+    time_items = [item for item in memories if item.get("time_window")]
     lines = [
         "[MAAT_MEMORY]",
         "Nutze diese Erinnerungen nur still als Kontext. Nicht zitieren, wenn es nicht hilft.",
         f"Aktueller menschlicher Schreiber: {current}",
         "Erwähnte Namen im Usertext sind nicht automatisch der Autor.",
     ]
+    if time_items:
+        windows = ", ".join(dict.fromkeys(str(item.get("time_window") or "") for item in time_items if item.get("time_window")))
+        lines.append(f"Zeitfrage erkannt: Die folgenden Treffer stammen aus dem Zeitfenster {windows}.")
+        lines.append("Wenn Zeit-Treffer vorhanden sind, behandle sie als abgerufene Erinnerungen und sage nicht, dass kein Memory-Eintrag existiert.")
+        if any(item.get("time_exact_miss") for item in time_items):
+            lines.append("Hinweis: exact_miss bedeutet, dass der exakte Tag leer war und ein nahes Zeitfenster oder Archiv-Fallback genutzt wurde.")
     if memories:
         lines.append("Relevante Erinnerungen:")
         for index, item in enumerate(memories, 1):
@@ -1298,15 +1362,21 @@ def save_reminder_block(settings: Any) -> str:
     return (
         "\n\n[MAAT_MEMORY_SAVE_REMINDER]\n"
         "Stille interne Anleitung fuer MAAT Super Memory. Nicht zitieren, nicht erklaeren, nicht sichtbar als Regel ausgeben.\n"
+        "SelfSave ist aktiv: Du darfst eigenstaendig entscheiden, ob eine neue Information ins Langzeitgedaechtnis gehoert.\n"
         f"Aktueller menschlicher Schreiber: {current}. Speichere neue User-Fakten im Inhalt mit diesem Namen, wenn relevant.\n"
-        "Wenn eine wirklich speicherwuerdige neue Information entsteht, schreibe ganz am Ende hoechstens ein save:(...).\n"
-        "Format: save: (memory=<klarer Inhalt>, keywords=<2-4 keywords>, tags=<tags>, always=false, "
-        "type=<identity|preference|project|decision|fact|temporary|relationship|technical>, field=<H|B|S|V|R>, priority=<low|normal|high|critical>)\n"
+        "Wenn eine wirklich speicherwuerdige neue Information entsteht, schreibe ganz am Ende hoechstens EINE einzelne save-Zeile.\n"
+        "Bevorzugtes Format: save: {\"memory\":\"klarer Inhalt\", \"keywords\":\"2-4 keywords\", \"tags\":\"tags\", "
+        "\"always\":false, \"type\":\"identity|preference|project|decision|fact|temporary|relationship|technical\", "
+        "\"field\":\"H|B|S|V|R\", \"priority\":\"low|normal|high|critical\"}\n"
+        "Fallback-Format, falls JSON nicht geht: save: (memory=klarer Inhalt, keywords=2-4 keywords, tags=tags, always=false, "
+        "type=identity|preference|project|decision|fact|temporary|relationship|technical, field=H|B|S|V|R, priority=low|normal|high|critical)\n"
+        "Wichtig: Keine Platzhalter mit <...> schreiben. Keine Zeile mit keywords/tags/priority ohne save: davor. Kein save mitten im Text.\n"
         "Speichern JA: Identitaet, Vorlieben, stabile Beziehungen, Projektentscheidungen, wichtige technische Fixes, Termine/kurzfristige Plaene, explizites 'merke dir'.\n"
+        "Wenn der User sagt 'merke dir das Wichtigste' oder aehnlich, erstelle eine knappe Zusammenfassungs-Erinnerung statt nur den Wortlaut zu speichern.\n"
         "Speichern NEIN: reine Begruessung, Danke, Wiederholung, interne Denkspur, Prompt/MAAT-Tags, Bildgenerator-Hilfstext, Code der nur gerade ausgefuehrt wird, unsichere Vermutungen.\n"
         "Nutze always=true nur fuer dauerhafte Identitaet/Core-Fakten. Nutze temporary fuer Termine und heutige Plaene. Nutze relationship fuer Personen/Familie/Freunde.\n"
         "Memory-Inhalt kurz, eindeutig und ohne Meta-Satz formulieren. Keine erfundenen Details. Erwaehnte Namen sind nicht automatisch der Autor.\n"
-        "Gutes Beispiel: save: (memory=User trifft heute um 13 Uhr eine Kontaktperson, keywords=treffen,13-uhr, tags=beziehung,termin, always=false, type=temporary, field=V, priority=normal)\n"
+        "Gutes Beispiel: save: {\"memory\":\"User trifft heute um 13 Uhr eine Kontaktperson\", \"keywords\":\"treffen, 13-uhr\", \"tags\":\"beziehung, termin\", \"always\":false, \"type\":\"temporary\", \"field\":\"V\", \"priority\":\"normal\"}\n"
         "Bei Code-/Datei-/Toolaufgaben niemals nur save ausgeben; zuerst die vollständige Antwort.\n"
         "[/MAAT_MEMORY_SAVE_REMINDER]"
     )
@@ -1464,7 +1534,27 @@ def _clean_save_value(value: str) -> str:
     value = str(value or "").strip().strip(",")
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         value = value[1:-1].strip()
+    if len(value) >= 2 and value[0] == "<" and value[-1] == ">":
+        value = value[1:-1].strip()
     return value
+
+
+def _strip_orphan_save_fragments(text: str) -> str:
+    lines = str(text or "").splitlines()
+    cleaned: list[str] = []
+    for line in lines:
+        compact = line.strip()
+        if re.match(r"^,?\s*(keywords|tags|always|type|memory_type|field|maat_field|priority)\s*[:=]", compact, flags=re.I):
+            continue
+        if (
+            re.search(r"\bkeywords\s*=", compact, flags=re.I)
+            and re.search(r"\btags\s*=", compact, flags=re.I)
+            and re.search(r"\bpriority\s*=", compact, flags=re.I)
+            and not re.search(r"\bsave\s*:", compact, flags=re.I)
+        ):
+            continue
+        cleaned.append(line)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(cleaned)).strip()
 
 
 def _parse_save(raw: str) -> dict[str, Any] | None:
@@ -1537,7 +1627,7 @@ def extract_model_saves(text: str) -> tuple[str, list[dict[str, Any]]]:
         cleaned.append(raw[pos:start])
         pos = end
     cleaned.append(raw[pos:])
-    return re.sub(r"\n{3,}", "\n\n", "".join(cleaned)).strip(), saves
+    return _strip_orphan_save_fragments(re.sub(r"\n{3,}", "\n\n", "".join(cleaned)).strip()), saves
 
 
 def _save_directive(save: dict[str, Any]) -> str:
@@ -1673,6 +1763,29 @@ def command_memory(database: Database, settings: Any, args: list[str]) -> str:
     if sub in {"on", "off"}:
         data["supermem_enabled"] = sub == "on"
         return f"MAAT Super Memory {'aktiviert' if data['supermem_enabled'] else 'deaktiviert'}."
+    if sub in {"selfsave", "ki-saves", "model-saves", "modelsaves"}:
+        if len(args) == 1 or args[1].lower() in {"status", "show"}:
+            return (
+                "MAAT Super Memory SelfSave:\n"
+                f"- KI darf selbst speichern: {'on' if data.get('supermem_allow_model_saves', True) else 'off'}\n"
+                f"- Save-Box sichtbar: {'on' if data.get('supermem_show_save_box', True) else 'off'}\n"
+                "Wenn aktiv, darf die KI am Antwortende eine einzelne `save:`-Zeile erzeugen. "
+                "Der Server speichert sie und ersetzt sie durch den Erinnerungskasten."
+            )
+        value = args[1].lower()
+        enabled = value in {"on", "an", "1", "true", "ja", "yes"}
+        if value in {"off", "aus", "0", "false", "nein", "no"}:
+            enabled = False
+        data["supermem_allow_model_saves"] = enabled
+        if enabled:
+            data["supermem_show_save_box"] = True
+        return f"SelfSave {'aktiviert' if enabled else 'deaktiviert'}."
+    if sub in {"savebox", "save-box"}:
+        if len(args) == 1:
+            return f"Save-Box: {'on' if data.get('supermem_show_save_box', True) else 'off'}"
+        value = args[1].lower()
+        data["supermem_show_save_box"] = value in {"on", "an", "1", "true", "ja", "yes"}
+        return f"Save-Box {'aktiviert' if data['supermem_show_save_box'] else 'deaktiviert'}."
     if sub == "debug" and len(args) >= 2:
         data["supermem_debug"] = args[1].lower() in {"on", "true", "1", "ja"}
         return f"Super Memory Debug {'an' if data['supermem_debug'] else 'aus'}."
@@ -1745,7 +1858,7 @@ def command_memory(database: Database, settings: Any, args: list[str]) -> str:
         return command_timeline(database, settings, args[1:], milestones=True)
     if sub == "stats":
         return json.dumps(stats(database), indent=2, ensure_ascii=False)
-    return "Usage: /maat memory [on|off|debug on|off|top <n>|user <name>|user add <name>|save <text>|dream [stunden]|archive [tage]|search <query>|graph|person <name>|timeline|milestones|stats]"
+    return "Usage: /maat memory [on|off|selfsave on|off|savebox on|off|debug on|off|top <n>|user <name>|user add <name>|save <text>|dream [stunden]|archive [tage]|search <query>|graph|person <name>|timeline|milestones|stats]"
 
 
 def command_graph(database: Database, settings: Any, args: list[str]) -> str:
