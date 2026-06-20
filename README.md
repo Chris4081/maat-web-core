@@ -29,6 +29,20 @@ Mitmachen und Sicherheit: [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SE
 
 Klicken zum Vergrößern.
 
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://youtu.be/8zZE2Yztj_M">
+        <img src="https://img.youtube.com/vi/8zZE2Yztj_M/hqdefault.jpg" alt="MAAT-KI Interview Demo-Video" width="420">
+      </a>
+      <br>
+      <strong>Demo-Video: MAAT-KI Interview</strong>
+      <br>
+      <a href="https://youtu.be/8zZE2Yztj_M">Auf YouTube ansehen</a>
+    </td>
+  </tr>
+</table>
+
 ## Highlights
 
 - **Local-first:** Läuft lokal mit GGUF-Modellen über `llama-cpp-python` oder optional über lokale OpenAI-kompatible APIs.
